@@ -92,8 +92,8 @@
   z-index: 3;
   left: -8%;
   right: -8%;
-  top: 26%;
-  bottom: 4%;
+  top: 16%;
+  bottom: 22%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,7 +133,8 @@
 @container (max-width: 72px) {
   .cart-ring,
   .cart-props,
-  .cart-bgimg {
+  .cart-bgimg,
+  .cart-plate {
     display: none;
   }
   .cart-skin-wrap {
@@ -151,4 +152,74 @@
   .case-hero .cart-ring {
     animation: none;
   }
+}
+
+/* Живые эффекты над кейсом: угли, снег, пузыри, лепестки, искры. */
+.cart-fx {
+  position: absolute;
+  inset: 0 6% 18%;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cart-fx i {
+  position: absolute;
+  bottom: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--fx);
+  box-shadow: 0 0 6px var(--fx);
+  opacity: 0;
+  animation: cart-rise 3s linear infinite;
+}
+.cart-fx-embers i {
+  background: #ffb347;
+  box-shadow: 0 0 6px #ff6a00;
+}
+.cart-fx-bubbles i {
+  width: 5px;
+  height: 5px;
+  background: transparent;
+  border: 1px solid var(--fx);
+}
+.cart-fx-petals i {
+  width: 5px;
+  height: 3px;
+  border-radius: 60% 0;
+  background: #ff9ccf;
+  box-shadow: none;
+}
+.cart-fx-snow i {
+  top: 0;
+  bottom: auto;
+  background: #fff;
+  box-shadow: 0 0 4px #bfe6ff;
+  animation-name: cart-fall;
+}
+@keyframes cart-rise {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(8px, -120px) scale(.4); opacity: 0; }
+}
+@keyframes cart-fall {
+  0% { transform: translate(0, -10px); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(-10px, 120px); opacity: 0; }
+}
+.cart-led {
+  animation: cart-blink 1.2s steps(2) infinite;
+}
+@keyframes cart-blink {
+  50% { opacity: .2; }
+}
+@container (max-width: 72px) {
+  .cart-fx,
+  .cart-details {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-fx { display: none; }
+  .cart-led { animation: none; }
 }
