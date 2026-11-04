@@ -120,6 +120,70 @@ describe('multiplayer', () => {
   });
 });
 
+async function runToEnd(id: string) {
+  let battle = (await call('GET', `/battles/${id}`)).body;
+  for (let i = 0; i < 200 && battle.status !== 'finished'; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    battle = (await call('GET', `/battles/${id}`)).body;
+  }
+  return battle;
+}
+
+describe('battle modes', () => {
+  for (const [mode, slots, crazy] of [
+    ['1v1v1', 3, false],
+    ['1v1v1v1', 4, true],
+    ['2v2', 4, true],
+  ] as const) {
+    it(`${mode}${crazy ? ' crazy' : ''} picks the right winner`, async () => {
+      const token = await register(`m${mode}${crazy ? 'c' : ''}`.replace(/v/g, 'x'));
+      const { body: cases } = await call('GET', '/cases');
+      const slug = cases.find((c: { limitTotal: number | null; price: number }) => c.limitTotal === null && c.price <= 1000).slug;
+      const created = await call('POST', '/battles', token, { mode, caseSlugs: [slug, slug, slug], crazy });
+      await call('POST', `/battles/${created.body.id}/bots`, token);
+      const b = await runToEnd(created.body.id);
+      expect(b.status).toBe('finished');
+      expect(b.players).toHaveLength(slots);
+      expect(b.drops).toHaveLength(slots * 3);
+      const teams = new Map<number, number>();
+      for (const p of b.players) teams.set(p.team, (teams.get(p.team) ?? 0) + p.total);
+      const best = crazy ? Math.min(...teams.values()) : Math.max(...teams.values());
+      expect(teams.get(b.winnerTeam)).toBe(best);
+    });
+  }
+
+  it('refunds everyone when the creator cancels', async () => {
+    const token = await register('canceller');
+    const { body: cases } = await call('GET', '/cases');
+    const c = cases.find((x: { limitTotal: number | null; price: number }) => x.limitTotal === null && x.price <= 1000);
+    const created = await call('POST', '/battles', token, { mode: '1v1', caseSlugs: [c.slug], crazy: false });
+    const cancel = await call('POST', `/battles/${created.body.id}/cancel`, token);
+    expect(cancel.body.status).toBe('cancelled');
+    expect((await call('GET', '/me', token)).body.balance).toBe(100000);
+  });
+});
+
+describe('selling and promos', () => {
+  it('sells the whole inventory at item prices', async () => {
+    const token = await register('seller');
+    const { body: cases } = await call('GET', '/cases');
+    const open = await call('POST', `/cases/${cases[0].slug}/open`, token, { count: 5 });
+    const sum = open.body.items.reduce((s: number, i: { price: number }) => s + i.price, 0);
+    const res = await call('POST', '/inventory/sell-all', token);
+    expect(res.body.sold).toBe(5);
+    expect(res.body.amount).toBe(sum);
+    expect(res.body.balance).toBe(open.body.balance + sum);
+    expect((await call('GET', '/me/inventory', token)).body).toHaveLength(0);
+  });
+
+  it('applies a promo code once', async () => {
+    const token = await register('promo');
+    const first = await call('POST', '/me/promo', token, { code: 'demo' });
+    expect(first.body.balance).toBe(150000);
+    expect((await call('POST', '/me/promo', token, { code: 'DEMO' })).status).toBe(400);
+  });
+});
+
 describe('admin', () => {
   it('is closed for regular users and open for admins', async () => {
     const token = await register('regular');
@@ -134,5 +198,49 @@ describe('admin', () => {
     const token = await register('daily');
     expect((await call('POST', '/me/daily', token)).status).toBe(200);
     expect((await call('POST', '/me/daily', token)).status).toBe(400);
+  });
+});
+
+describe('admin management', () => {
+  it('manages users, balances, cases, items and promos', async () => {
+    const admin = (await call('POST', '/auth/login', undefined, { nickname: 'testadmin', password: 'testadmin-pass' })).body.token;
+    const victimToken = await register('victim');
+    const victim = (await call('GET', '/me', victimToken)).body;
+
+    expect((await call('GET', '/admin/stats', admin)).body.users).toBeGreaterThan(0);
+    const details = await call('GET', `/admin/users/${victim.id}`, admin);
+    expect(details.body.transactions[0].reason).toBe('signup_bonus');
+
+    expect((await call('POST', `/admin/users/${victim.id}/balance`, admin, { amount: 5000 })).body.balance).toBe(105000);
+    expect((await call('POST', `/admin/users/${victim.id}/balance`, admin, { amount: -500000 })).body.balance).toBe(0);
+
+    await call('PATCH', `/admin/users/${victim.id}`, admin, { isBanned: true });
+    expect((await call('GET', '/me', victimToken)).status).toBe(403);
+
+    const cases = (await call('GET', '/admin/cases', admin)).body;
+    const c = cases[0];
+    const update = {
+      slug: c.slug,
+      name: 'Переименован',
+      category: c.category,
+      sortOrder: c.sortOrder,
+      price: c.price * 2,
+      hue: c.hue,
+      icon: c.icon,
+      imageUrl: c.imageUrl,
+      limitTotal: c.limitTotal,
+      isActive: true,
+      items: c.items.map((i: { item: { id: string }; weight: number }) => ({ itemId: i.item.id, weight: i.weight })),
+    };
+    expect((await call('PUT', `/admin/cases/${c.id}`, admin, update)).status).toBe(200);
+    expect((await call('GET', `/cases/${c.slug}`)).body.name).toBe('Переименован');
+
+    const item = (await call('GET', '/items?limit=1')).body.items[0];
+    const edited = await call('PUT', `/admin/items/${item.id}`, admin, { ...item, price: 12345 });
+    expect(edited.body.price).toBe(12345);
+
+    expect((await call('POST', '/admin/promos', admin, { code: 'FRIENDS', amount: 1000, maxUses: 2 })).status).toBe(200);
+    const promos = (await call('GET', '/admin/promos', admin)).body;
+    expect(promos.some((p: { code: string }) => p.code === 'FRIENDS')).toBe(true);
   });
 });

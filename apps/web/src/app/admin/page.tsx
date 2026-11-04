@@ -323,12 +323,23 @@ function Cases() {
     api<AdminCase[]>('/admin/cases').then(setCases).catch(() => undefined);
   }, []);
   useEffect(load, [load]);
-  const list = (cases ?? []).filter((c) => !search || `${c.name} ${c.category}`.toLowerCase().includes(search.toLowerCase()));
+  const [showOff, setShowOff] = useState(false);
+  const active = (cases ?? []).filter((c) => c.isActive).length;
+  const list = (cases ?? []).filter(
+    (c) => (showOff || c.isActive) && (!search || `${c.name} ${c.category} ${c.slug}`.toLowerCase().includes(search.toLowerCase())),
+  );
   return (
     <div className="panel">
       <div className="picker-head">
-        <h3>Кейсы · {cases?.length ?? '…'}</h3>
+        <h3>
+          Кейсы · {active} активных{cases && cases.length > active ? ` / ${cases.length - active} выкл.` : ''}
+        </h3>
         <input className="input" placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <label className="toggle">
+          <input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />
+          <i />
+          Выключенные
+        </label>
         <button className="btn btn-primary btn-sm" onClick={() => setEdit('new')}>
           + Новый кейс
         </button>
