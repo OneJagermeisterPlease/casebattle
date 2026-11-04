@@ -1,0 +1,28 @@
+# Запуск за уже существующим nginx (например, на VPN-сервере, где 443 занят Xray).
+# Сервисы слушают только localhost; наружу их отдаёт nginx (см. deploy/nginx-casebattle.conf).
+#   docker compose -f deploy/docker-compose.vps.yml up -d --build
+name: casebattle
+services:
+  api:
+    build: { context: .., target: api }
+    restart: unless-stopped
+    env_file: ../apps/api/.env
+    environment:
+      DATABASE_URL: file:/data/casebattle.db
+      API_PORT: 4000
+    ports: ["127.0.0.1:4010:4000"]
+    volumes: [data:/data]
+    mem_limit: 768m
+
+  web:
+    build:
+      context: ..
+      target: web
+      args: { NEXT_PUBLIC_API_URL: /api }
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["127.0.0.1:3010:3000"]
+    mem_limit: 512m
+
+volumes:
+  data:

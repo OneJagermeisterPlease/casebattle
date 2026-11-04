@@ -262,15 +262,10 @@ export function caseSpecs(items: CatalogItem[], crates: { id: string; name: stri
   ]);
 
   add('Стиль', [
-    ['Граффити', 75, 300, 'chip', /Graffiti|Spray|Street|Tag|Paint|Pop/i],
     ['Неон', 199, 310, 'bolt', /Neon|Glow|Light|Electric|Hyper/i],
-    ['Ретро', 189, 30, 'star', /Retro|Vintage|Classic|Old|Wood|Antique/i],
     ['Камуфляж', 439, 100, 'leaf', /Camo|DDPAT|Forest|Desert|Sand|Jungle|Urban/i],
-    ['Мрамор', 499, 340, 'gem', /Marble|Damascus|Case Hardened|Crimson Web/i],
     ['Допплер', 999, 280, 'gem', /Doppler|Gamma/i],
     ['Градиент', 109, 50, 'gem', /Fade|Gradient/i],
-    ['Хищники', 50, 30, 'target', /Tiger|Wolf|Panther|Lion|Leopard|Hyper Beast|Beast/i],
-    ['Океан', 150, 195, 'anchor', /Ocean|Water|Wave|Sea|Aqua|Coral|Shark/i],
     ['Пламя', 300, 15, 'flame', /Fire|Flame|Blaze|Inferno|Heat|Burn/i],
   ]);
 
@@ -281,10 +276,6 @@ export function caseSpecs(items: CatalogItem[], crates: { id: string; name: stri
     ['8 марта', 140, 320, 'flower', /Flower|Bloom|Petal|Rose|Lily|Garden|Pink|Sakura|Spring/i],
     ['23 февраля', 379, 120, 'medal', /Army|Camo|DDPAT|Military|Tank|Soldier|Forest|Olive|Tactical|Guard/i],
     ['День рождения', 499, 280, 'gift', /Candy|Party|Gift|Gold|Neon|Rainbow|Fade|Hyper/i],
-    ['Турнир', 650, 45, 'medal', null],
-    ['Финал', 750, 50, 'crown', null],
-    ['Лига', 269, 210, 'shield', null],
-    ['Кубок', 1269, 40, 'crown', null],
     ['Изумруд', 499, 145, 'gem', null],
     ['Рубин', 999, 350, 'gem', null],
     ['Сапфир', 1999, 215, 'gem', null],
@@ -339,12 +330,7 @@ export function caseSpecs(items: CatalogItem[], crates: { id: string; name: stri
     });
   }
   add('Оружейные', [
-    ['Эко-раунд', 44, 100, 'shield', /Sand|Desert|Safari|Scorch|Contractor/i],
-    ['Фарм', 55, 60, 'box', null],
     ['Фулл-бай', 189, 20, 'target', null],
-    ['Звёзды', 25, 50, 'star', /Star|Galaxy|Space|Moon|Night/i],
-    ['Руны', 29, 280, 'moon', /Rune|Magic|Spell|Myth|Legend/i],
-    ['Магия', 75, 285, 'star', /Magic|Spell|Hex|Witch|Mystic/i],
     ['Охота за тайным', 399, 355, 'target', null],
     ['Смертельное оружие', 21999, 0, 'skull', null],
   ]);
@@ -375,6 +361,35 @@ export function caseSpecs(items: CatalogItem[], crates: { id: string; name: stri
   for (const [name, price, hue, limit, icon, re] of limited) {
     specs.push({ name, slug: `limited-${slugify(name)}`, category: 'Ограниченная серия', price, hue, icon, limitTotal: limit, pool: themed(re) });
   }
+
+  add('Хайп', [
+    ['ПорнХаб', 69, 30, 'bolt', /Neon|Orange|Night|Black|Hyper|Pink/i],
+    ['Ягермейстер', 149, 120, 'leaf', /Forest|Hunt|Deer|Green|Herb|Wood|Jungle/i],
+    ['Покерный дом', 499, 0, 'crown', /Ace|Card|Royal|Gold|Casino|Luck/i],
+    ['Дота 2', 349, 15, 'dragon', /Dragon|Magic|Legend|Myth|Hydra|Fire/i],
+    ['Клауд Код', 999, 22, 'chip', /Cyber|Digital|Code|Circuit|Tech|Neon|Glitch/i],
+    ['Белая берёзка', 59, 200, 'snowflake', /Ice|Frost|Snow|Winter|White|Arctic/i],
+    ['Вайб-кодинг', 129, 280, 'chip', /Neon|Digital|Synth|Hyper|Code|Pop/i],
+    ['Дедлайн', 39, 0, 'bolt', /Blood|Red|Burn|Panic|Night/i],
+    ['Прод упал', 249, 15, 'flame', /Fire|Flame|Burn|Inferno|Heat|Scorch/i],
+    ['Копипаста', 29, 210, 'chip', /Digital|Code|Circuit|Copy|Glitch/i],
+    ['Энергетик', 45, 90, 'bolt', /Toxic|Acid|Electric|Volt|Lime|Green/i],
+    ['Раш Б', 19, 40, 'target', /Sand|Desert|Dust|Rush|Orange/i],
+    ['Эйс', 299, 45, 'medal', /Ace|Gold|Royal|Crown|Legend/i],
+    ['Клатч 1 в 5', 699, 355, 'skull', /Death|Skull|Kill|Blood|Clutch/i],
+    ['Мид', 99, 190, 'target', /Desert|Sand|Mirage|Arch|Stone/i],
+    ['Стрим 24/7', 199, 270, 'star', /Neon|Purple|Hyper|Pop|Glow/i],
+    ['Текила', 89, 40, 'flame', /Sun|Desert|Cactus|Orange|Gold/i],
+    ['Виски', 399, 30, 'gem', /Copper|Amber|Wood|Gold|Rust|Bronze/i],
+    ['Пивфест', 55, 45, 'gift', /Gold|Amber|Yellow|Wood|Party/i],
+    ['Абсент', 269, 110, 'biohazard', /Toxic|Green|Acid|Poison|Lime|Emerald/i],
+    ['Шампанское', 1499, 50, 'gift', /Gold|Pearl|Fade|Bubble|Royal/i],
+    ['Самогон', 75, 35, 'flame', /Rust|Copper|Wood|Moon|Night/i],
+    ['Кальянная', 109, 285, 'moon', /Smoke|Night|Purple|Velvet|Haze/i],
+    ['Шаурма в 3 ночи', 49, 25, 'flame', /Fire|Night|Spice|Orange|Desert/i],
+    ['Казино', 2999, 45, 'crown', /Gold|Royal|Ace|Luck|Diamond/i],
+    ['Лутбокс', 189, 300, 'box', null],
+  ]);
 
   add('Бонусные', [
     ['Янтарный', 20, 35, 'gem'], ['Ониксовый', 50, 260, 'gem'], ['Гранатовый', 100, 345, 'gem'], ['Гессонитовый', 250, 25, 'gem'],

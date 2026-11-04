@@ -3,7 +3,7 @@
 /* Default size with zero specificity so contextual rules in globals.css win. */
 :where(.cart) {
   width: 170px;
-  height: 140px;
+  height: 130px;
 }
 
 .cart {
@@ -16,15 +16,38 @@
   vertical-align: middle;
 }
 
-/* Home grid: a little larger than the old flat icon so the scene reads. */
+/* Wide covers (viewBox 240×184 ≈ 1.3:1): big on the home grid, bigger in the hero. */
+.cases-grid:has(.cart) {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
 .case-card .case-art.cart {
-  width: 196px;
-  height: 160px;
+  width: 284px;
+  height: 218px;
+}
+.case-hero .case-art.cart {
+  width: 420px;
+  height: 322px;
 }
 @media (max-width: 900px) {
+  .cases-grid:has(.cart) {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
   .case-card .case-art.cart {
-    width: 150px;
-    height: 124px;
+    width: 230px;
+    height: 176px;
+  }
+  .case-hero .case-art.cart {
+    width: min(360px, 88vw);
+    height: min(276px, 67vw);
+  }
+}
+@media (max-width: 560px) {
+  .cases-grid:has(.cart) {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  .case-card .case-art.cart {
+    width: 160px;
+    height: 123px;
   }
 }
 
@@ -56,12 +79,12 @@
 /* Blurred, darkened copy of the lid scene as a depth glow behind the chest. */
 .cart-bgimg {
   position: absolute;
-  left: 4%;
-  right: 4%;
+  left: 14%;
+  right: 2%;
   top: -6%;
-  bottom: 14%;
-  width: 92%;
-  height: 92%;
+  bottom: 34%;
+  width: 84%;
+  height: 72%;
   object-fit: cover;
   border-radius: 50%;
   filter: blur(14px) brightness(0.6) saturate(1.4);
@@ -73,16 +96,12 @@
 }
 
 /* Ring: static on grids, slow spin on the case page hero. */
-.cart-ring {
-  transform-box: view-box;
-  transform-origin: 100px 64px;
+.case-hero .cart-ring-dash {
+  animation: cart-dash 14s linear infinite;
 }
-.case-hero .cart-ring {
-  animation: cart-spin 30s linear infinite;
-}
-@keyframes cart-spin {
+@keyframes cart-dash {
   to {
-    transform: rotate(360deg);
+    stroke-dashoffset: -190;
   }
 }
 
@@ -90,15 +109,15 @@
 .cart-skin-wrap {
   position: absolute;
   z-index: 3;
-  left: -8%;
-  right: -8%;
-  top: 16%;
-  bottom: 22%;
+  left: -4%;
+  right: 0;
+  top: 22%;
+  bottom: 8%;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transform: rotate(-16deg);
+  transform: rotate(-17deg);
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.3);
 }
 .cart-skin {
@@ -112,9 +131,9 @@
 /* Official CS2 crate image over the lit backdrop. */
 .cart-crate-img {
   position: absolute;
-  inset: 8% 6% 10%;
-  width: 88%;
-  height: 82%;
+  inset: 4% 10% 6%;
+  width: 80%;
+  height: 90%;
   object-fit: contain;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6));
   transition: transform 0.3s;
@@ -134,14 +153,17 @@
   .cart-ring,
   .cart-props,
   .cart-bgimg,
-  .cart-plate {
+  .cart-plate,
+  .cart-latches,
+  .cart-handle {
     display: none;
   }
   .cart-skin-wrap {
     left: 2%;
-    right: 0;
-    top: 44%;
-    bottom: -2%;
+    right: 2%;
+    top: 30%;
+    bottom: 6%;
+    transform: rotate(-12deg);
   }
   .cart-skin {
     filter: drop-shadow(0 0 1.5px var(--rar, #e4ae39)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.85));
@@ -149,7 +171,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .case-hero .cart-ring {
+  .case-hero .cart-ring-dash {
     animation: none;
   }
 }
@@ -157,7 +179,7 @@
 /* Живые эффекты над кейсом: угли, снег, пузыри, лепестки, искры. */
 .cart-fx {
   position: absolute;
-  inset: 0 6% 18%;
+  inset: 0 6% 22%;
   z-index: 4;
   pointer-events: none;
   overflow: hidden;
