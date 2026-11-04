@@ -20,9 +20,9 @@ OUT = ROOT / "apps/web/public/cases/art"
 MANIFEST = ROOT / "apps/web/src/lib/caseArtManifest.ts"
 
 STYLE = (
-    "epic game key art illustration, highly detailed digital painting, dramatic cinematic lighting, "
-    "vivid saturated colors, glowing rim light, sharp focus, trending on artstation, "
-    "no text, no letters, no logo, no watermark"
+    "vibrant comic book splash art, bold black ink outlines, cel shading, graffiti street-art style, "
+    "explosive neon saturated colors, high contrast, dynamic composition, character holding a large gun in the foreground, "
+    "detailed background, glowing highlights, poster illustration, no text, no letters, no logo, no watermark"
 )
 
 COLORS = {

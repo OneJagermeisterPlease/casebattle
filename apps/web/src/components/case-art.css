@@ -49,16 +49,19 @@
   mix-blend-mode: color;
   opacity: 0.28;
 }
+.cart-paint.is-own .cart-grade {
+  opacity: 0.12;
+}
 
 /* Blurred, darkened copy of the lid scene as a depth glow behind the chest. */
 .cart-bgimg {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: -4%;
-  bottom: 6%;
-  width: 84%;
-  height: 98%;
+  left: 4%;
+  right: 4%;
+  top: -6%;
+  bottom: 14%;
+  width: 92%;
+  height: 92%;
   object-fit: cover;
   border-radius: 50%;
   filter: blur(14px) brightness(0.6) saturate(1.4);
@@ -72,7 +75,7 @@
 /* Ring: static on grids, slow spin on the case page hero. */
 .cart-ring {
   transform-box: view-box;
-  transform-origin: 100px 66px;
+  transform-origin: 100px 64px;
 }
 .case-hero .cart-ring {
   animation: cart-spin 30s linear infinite;
@@ -86,15 +89,15 @@
 /* Featured skin lying diagonally across the open case. */
 .cart-skin-wrap {
   position: absolute;
-  left: 3%;
-  right: 1%;
-  top: 33%;
-  bottom: 9%;
+  left: 7%;
+  right: 5%;
+  top: 54%;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transform: rotate(-11deg);
+  transform: rotate(-8deg);
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.3);
 }
 .cart-skin {
@@ -118,7 +121,7 @@
 /* Hover hooks (parent .case-card already scales .case-art). */
 .case-card:hover .cart-skin-wrap,
 .case-pick:hover .cart-skin-wrap {
-  transform: rotate(-6deg) translateY(-7%) scale(1.07);
+  transform: rotate(-4deg) translateY(-6%) scale(1.07);
 }
 .case-card:hover .cart-crate-img {
   transform: translateY(-4%);
@@ -132,10 +135,10 @@
     display: none;
   }
   .cart-skin-wrap {
-    left: 4%;
-    right: 2%;
-    top: 36%;
-    bottom: 8%;
+    left: 2%;
+    right: 0;
+    top: 44%;
+    bottom: -2%;
   }
   .cart-skin {
     filter: drop-shadow(0 0 1.5px var(--rar, #e4ae39)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.85));

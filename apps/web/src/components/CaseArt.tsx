@@ -1,5 +1,6 @@
 import { RARITY_META, type CaseDTO } from '@casebattle/shared';
 import { useId, type ReactNode } from 'react';
+import { CASE_ART } from '@/lib/caseArtManifest';
 import './case-art.css';
 
 /**
@@ -58,7 +59,11 @@ const GOLD_THEMES = new Set<Theme>(['vault', 'forge', 'military', 'west', 'pirat
  * Hard-coded list of keys that exist — no HEAD/fetch probing. Themes whose key
  * is missing fall back to the vector scene below.
  */
-const SCENE_FILES = new Set<string>(['rocket', 'star']);
+const SCENE_FILES = new Set<string>([
+  'anchor', 'biohazard', 'bolt', 'box', 'chip', 'cowboy', 'crown', 'dragon', 'fedora', 'flag', 'flame', 'flower',
+  'gasmask', 'gem', 'gift', 'glove', 'heart', 'katana', 'knife', 'leaf', 'medal', 'moon', 'pumpkin', 'rocket',
+  'shield', 'skull', 'snowflake', 'star', 'target',
+]);
 
 /** Closest painted scene(s) for each internal theme, in order of preference. */
 const THEME_SCENE: Record<Theme, string[]> = {
@@ -88,6 +93,7 @@ const ICON_THEMES: Record<string, Theme> = {
 type ArtCase = Pick<CaseDTO, 'hue' | 'icon' | 'imageUrl' | 'name'> & {
   cover?: CaseDTO['cover'];
   category?: string;
+  slug?: string;
 };
 
 const NAME_THEMES: [RegExp, Theme][] = [
@@ -153,17 +159,22 @@ function flames(w: number, baseY: number, height: number, n: number, phase: numb
 }
 
 // ── geometry (viewBox 200×160) ───────────────────────────────────────────────
-const LID = pts([52, 12], [148, 12], [154, 90], [46, 90]);
-const LID_TOP = pts([55, 7], [145, 7], [148, 12], [52, 12]);
-const WIN = pts([59, 19], [141, 19], [146, 86], [54, 86]);
-const SCENE_X = 54;
-const SCENE_Y = 19;
-const SW = 92; // scene width
-const SH = 67; // scene height
-const RIM = pts([46, 90], [154, 90], [172, 110], [28, 110]);
-const CAVITY = pts([54, 94], [146, 94], [161, 106], [39, 106]);
-const FRONT = pts([28, 110], [172, 110], [166, 146], [34, 146]);
-const PANEL = pts([41, 117], [159, 117], [155, 140], [45, 140]);
+// Vector fallback scenes are drawn in a SW×SH local frame.
+const SW = 92;
+const SH = 67;
+// Large framed painting panel (raised lid / poster), slight perspective.
+const FRAME = pts([41, 4], [159, 4], [166, 110], [34, 110]);
+const FRAME_TOP = pts([44, 0.5], [156, 0.5], [159, 4], [41, 4]);
+const WIN = pts([46, 9], [154, 9], [160.5, 105], [39.5, 105]);
+const WX = 39;
+const WY = 9;
+const WW = 122;
+const WH = 96;
+// Open chest body in front of / below the panel.
+const RIM = pts([52, 105], [148, 105], [162, 118], [38, 118]);
+const CAVITY = pts([58, 107.5], [142, 107.5], [153, 115.5], [47, 115.5]);
+const FRONT = pts([38, 118], [162, 118], [157, 146], [43, 146]);
+const PANEL = pts([48, 123], [152, 123], [149, 140], [51, 140]);
 
 export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string }) {
   const rid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
@@ -188,36 +199,40 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
   }
 
   const theme = themeOf(c, h);
+  // Painting fallback order: per-case art → theme scene → vector scene.
+  const own = c.slug && CASE_ART.has(c.slug) ? `/cases/art/${c.slug}.webp` : null;
   const sk = sceneKey(c.icon, theme);
-  const sceneUrl = sk ? `/cases/scenes/${sk}.webp` : null;
+  const paint = own ?? (sk ? `/cases/scenes/${sk}.webp` : null);
   const gold = GOLD_THEMES.has(theme) || c.icon === 'knife' || c.icon === 'glove' || c.icon === 'crown';
   const rim = hsl(h, 100, 62);
   const rimHi = hsl(h, 100, 80);
   const trim = gold ? ['#fff4c2', '#f0bf4c', '#a86e10', '#4f3005'] : ['#ffffff', '#c8d0de', '#6f7a8e', '#262c38'];
+  const vk = WH / SH; // vector fallback scale (slice-like)
 
   return (
-    <span className={`case-art cart cart-${theme} ${skin ? 'has-skin' : 'no-skin'} ${className}`} role="img" aria-label={c.name}>
-      {sceneUrl && <img className="cart-bgimg" src={sceneUrl} alt="" loading="lazy" draggable={false} />}
+    <span className={`case-art cart cart-${theme} ${paint ? 'has-paint' : 'no-paint'} ${skin ? 'has-skin' : 'no-skin'} ${className}`} role="img" aria-label={c.name}>
+      {paint && <img className="cart-bgimg" src={paint} alt="" loading="lazy" draggable={false} />}
       <svg className="cart-svg" viewBox="0 0 200 160" aria-hidden="true">
         <defs>
           <linearGradient id={id('metal')} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={hsl(h, 14, 34)} />
-            <stop offset=".45" stopColor={hsl(h, 16, 17)} />
-            <stop offset="1" stopColor={hsl(h, 20, 7)} />
+            <stop offset="0" stopColor={hsl(h, 12, 32)} />
+            <stop offset=".45" stopColor={hsl(h, 14, 15)} />
+            <stop offset="1" stopColor={hsl(h, 18, 6)} />
           </linearGradient>
-          <linearGradient id={id('lidm')} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={hsl(h, 12, 44)} />
-            <stop offset=".5" stopColor={hsl(h, 14, 22)} />
-            <stop offset="1" stopColor={hsl(h, 18, 12)} />
+          <linearGradient id={id('frame')} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={hsl(h, 10, 52)} />
+            <stop offset=".3" stopColor={hsl(h, 12, 26)} />
+            <stop offset=".7" stopColor={hsl(h, 14, 14)} />
+            <stop offset="1" stopColor={hsl(h, 12, 30)} />
           </linearGradient>
           <linearGradient id={id('rim')} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={hsl(h, 10, 30)} />
-            <stop offset="1" stopColor={hsl(h, 12, 58)} />
+            <stop offset="0" stopColor={hsl(h, 10, 26)} />
+            <stop offset="1" stopColor={hsl(h, 10, 56)} />
           </linearGradient>
           <radialGradient id={id('cav')} cx=".5" cy=".2" r=".8">
             <stop offset="0" stopColor={hsl(h, 100, 72)} />
-            <stop offset=".5" stopColor={hsl(h, 90, 40)} />
-            <stop offset="1" stopColor={hsl(h, 60, 10)} />
+            <stop offset=".5" stopColor={hsl(h, 90, 38)} />
+            <stop offset="1" stopColor={hsl(h, 60, 8)} />
           </radialGradient>
           <linearGradient id={id('trim')} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor={trim[0]} />
@@ -226,11 +241,21 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
             <stop offset="1" stopColor={trim[3]} />
           </linearGradient>
           <linearGradient id={id('glass')} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#fff" stopOpacity=".28" />
-            <stop offset=".4" stopColor="#fff" stopOpacity=".04" />
-            <stop offset=".41" stopColor="#fff" stopOpacity="0" />
-            <stop offset="1" stopColor="#000" stopOpacity=".25" />
+            <stop offset="0" stopColor="#fff" stopOpacity=".24" />
+            <stop offset=".34" stopColor="#fff" stopOpacity=".05" />
+            <stop offset=".35" stopColor="#fff" stopOpacity="0" />
+            <stop offset="1" stopColor="#000" stopOpacity=".18" />
           </linearGradient>
+          <linearGradient id={id('inner')} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#000" stopOpacity=".55" />
+            <stop offset=".12" stopColor="#000" stopOpacity="0" />
+            <stop offset=".7" stopColor="#000" stopOpacity="0" />
+            <stop offset="1" stopColor={hsl(h, 100, 55)} stopOpacity=".35" />
+          </linearGradient>
+          <radialGradient id={id('vig')} cx=".5" cy=".45" r=".75">
+            <stop offset=".6" stopColor="#000" stopOpacity="0" />
+            <stop offset="1" stopColor={hsl(h, 60, 6)} stopOpacity=".6" />
+          </radialGradient>
           <linearGradient id={id('sheen')} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
             <stop offset=".5" stopColor="#fff" stopOpacity=".2" />
@@ -239,10 +264,6 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
           <radialGradient id={id('rar')}>
             <stop offset="0" stopColor={rarityColor} stopOpacity=".8" />
             <stop offset="1" stopColor={rarityColor} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id={id('vig')} cx=".5" cy=".45" r=".75">
-            <stop offset=".55" stopColor="#000" stopOpacity="0" />
-            <stop offset="1" stopColor={hsl(h, 60, 6)} stopOpacity=".7" />
           </radialGradient>
           <clipPath id={id('win')}>
             <polygon points={WIN} />
@@ -254,108 +275,106 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
 
         <Backdrop h={h} id={id} url={url} />
 
-        {/* ── raised lid with themed scene ── */}
+        {/* ── framed painting panel ── */}
         <g className="cart-lid">
-          <polygon points={LID_TOP} fill={hsl(h, 12, 58)} />
-          <polygon points={LID} fill={url('lidm')} />
-          <polygon points={LID} fill="none" stroke={rim} strokeOpacity=".35" strokeWidth="4" strokeLinejoin="round" />
-          <polygon points={LID} fill="none" stroke={rimHi} strokeWidth="1.1" strokeLinejoin="round" />
+          <polygon points={FRAME} fill="#000" opacity=".45" transform="translate(0 2.5)" />
+          <polygon points={FRAME_TOP} fill={hsl(h, 10, 62)} />
+          <polygon points={FRAME} fill={url('frame')} />
+          <polygon points={FRAME} fill="none" stroke={rim} strokeOpacity=".4" strokeWidth="4" strokeLinejoin="round" />
+          <polygon points={FRAME} fill="none" stroke={rimHi} strokeWidth="1.1" strokeLinejoin="round" />
           <g clipPath={url('win')}>
-            {sceneUrl ? (
-              <g className="cart-paint">
-                <image href={sceneUrl} x={SCENE_X - 2} y={SCENE_Y - 2} width={SW + 4} height={SH + 4} preserveAspectRatio="xMidYMid slice" />
+            {paint ? (
+              <g className={`cart-paint ${own ? 'is-own' : 'is-theme'}`}>
+                <image href={paint} x={WX} y={WY} width={WW} height={WH} preserveAspectRatio="xMidYMid slice" />
                 {/* colour grade toward the case hue + vignette */}
-                <rect className="cart-grade" x={SCENE_X} y={SCENE_Y} width={SW} height={SH} fill={hsl(h, 100, 50)} />
-                <rect x={SCENE_X} y={SCENE_Y} width={SW} height={SH} fill={url('vig')} />
+                <rect className="cart-grade" x={WX} y={WY} width={WW} height={WH} fill={hsl(h, 100, 50)} />
+                <rect x={WX} y={WY} width={WW} height={WH} fill={url('vig')} />
               </g>
             ) : (
-              <g transform={`translate(${SCENE_X} ${SCENE_Y})`}>
+              <g transform={`translate(${WX + (WW - SW * vk) / 2} ${WY}) scale(${vk})`}>
                 <Scene theme={theme} h={h} id={id} url={url} />
               </g>
             )}
+            <rect x={WX} y={WY} width={WW} height={WH} fill={url('inner')} />
             <polygon points={WIN} fill={url('glass')} />
           </g>
-          {/* window frame bevel */}
-          <polygon points={WIN} fill="none" stroke="#000" strokeOpacity=".55" strokeWidth="2.2" />
-          <polygon points={WIN} fill="none" stroke={url('trim')} strokeWidth="1" />
+          {/* inner bevel of the frame */}
+          <polygon points={WIN} fill="none" stroke="#000" strokeOpacity=".6" strokeWidth="2" />
+          <polygon points={WIN} fill="none" stroke={url('trim')} strokeWidth=".9" />
+          <line x1="41" y1="4.4" x2="159" y2="4.4" stroke="#fff" strokeOpacity=".7" strokeWidth=".8" />
           {[
-            [56, 16],
-            [144, 16],
-            [50, 86],
-            [150, 86],
+            [43.5, 6.5],
+            [156.5, 6.5],
+            [37.5, 107.5],
+            [162.5, 107.5],
           ].map(([x, y]) => (
-            <circle key={`${x}${y}`} cx={x} cy={y} r="1.5" fill={url('trim')} stroke="#000" strokeOpacity=".5" strokeWidth=".4" />
+            <circle key={`${x}${y}`} cx={x} cy={y} r="1.4" fill={url('trim')} stroke="#000" strokeOpacity=".5" strokeWidth=".4" />
           ))}
         </g>
 
         {/* ── open chest body ── */}
         <polygon points={RIM} fill={url('rim')} />
         <polygon points={CAVITY} fill={url('cav')} />
-        <polygon points={CAVITY} fill="none" stroke="#000" strokeOpacity=".5" strokeWidth="1.2" />
-        <line x1="28" y1="110" x2="172" y2="110" stroke="#fff" strokeOpacity=".7" strokeWidth="1" />
-        <line x1="46" y1="90" x2="154" y2="90" stroke={rimHi} strokeOpacity=".6" strokeWidth=".8" />
-        {/* light spilling out of the case */}
-        <polygon className="cart-spill" points={pts([60, 96], [140, 96], [160, 40], [40, 40])} fill={url('spill')} />
+        <polygon points={CAVITY} fill="none" stroke="#000" strokeOpacity=".5" strokeWidth="1.1" />
+        <line x1="38" y1="118" x2="162" y2="118" stroke="#fff" strokeOpacity=".7" strokeWidth=".9" />
+        <line x1="52" y1="105" x2="148" y2="105" stroke={rimHi} strokeOpacity=".6" strokeWidth=".8" />
 
-        {skin && <ellipse className="cart-rarity" cx="100" cy="102" rx="70" ry="22" fill={url('rar')} />}
+        {skin && <ellipse className="cart-rarity" cx="100" cy="120" rx="70" ry="18" fill={url('rar')} />}
 
         <polygon points={FRONT} fill={url('metal')} />
         <g clipPath={url('front')}>
-          <polygon points={pts([40, 146], [60, 110], [86, 110], [66, 146])} fill={url('sheen')} />
-          <rect x="28" y="140" width="144" height="6" fill={rim} opacity=".25" />
+          <polygon points={pts([46, 146], [62, 118], [84, 118], [68, 146])} fill={url('sheen')} />
+          <rect x="38" y="141" width="124" height="5" fill={rim} opacity=".25" />
         </g>
-        <polygon points={PANEL} fill="#000" fillOpacity=".22" stroke="#000" strokeOpacity=".5" strokeWidth="1.2" />
+        <polygon points={PANEL} fill="#000" fillOpacity=".22" stroke="#000" strokeOpacity=".5" strokeWidth="1.1" />
         <polygon points={PANEL} fill="none" stroke="#fff" strokeOpacity=".14" strokeWidth=".7" transform="translate(0 .9)" />
-        {/* panel ribs */}
-        {[62, 138].map((x) => (
-          <line key={x} x1={x} y1="119" x2={x + (x < 100 ? 1 : -1)} y2="138" stroke="#000" strokeOpacity=".35" strokeWidth="1.4" />
-        ))}
         {/* hue rim light on edges */}
         <g fill="none" strokeLinejoin="round" strokeLinecap="round">
-          <polyline points={pts([28, 110], [34, 146], [166, 146], [172, 110])} stroke={rim} strokeOpacity=".35" strokeWidth="4" />
-          <polyline points={pts([28, 110], [34, 146], [166, 146], [172, 110])} stroke={rimHi} strokeWidth="1.1" />
-          <polyline points={pts([28, 110], [46, 90])} stroke={rimHi} strokeOpacity=".7" strokeWidth="1" />
-          <polyline points={pts([172, 110], [154, 90])} stroke={rimHi} strokeOpacity=".7" strokeWidth="1" />
+          <polyline points={pts([38, 118], [43, 146], [157, 146], [162, 118])} stroke={rim} strokeOpacity=".35" strokeWidth="4" />
+          <polyline points={pts([38, 118], [43, 146], [157, 146], [162, 118])} stroke={rimHi} strokeWidth="1.1" />
+          <polyline points={pts([38, 118], [52, 105])} stroke={rimHi} strokeOpacity=".7" strokeWidth="1" />
+          <polyline points={pts([162, 118], [148, 105])} stroke={rimHi} strokeOpacity=".7" strokeWidth="1" />
         </g>
-        {/* corner caps + rivets */}
-        <path d="M28 110 h14 v3.5 h-10 v10 h-3 Z" fill={url('trim')} />
-        <path d="M172 110 h-14 v3.5 h10 v10 h3 Z" fill={url('trim')} />
-        <path d="M34 146 h12 v-3 h-9 v-9 h-4.6 Z" fill={url('trim')} />
-        <path d="M166 146 h-12 v-3 h9 v-9 h4.6 Z" fill={url('trim')} />
+        {/* corner caps + rivets + feet */}
+        <path d="M38 118 h12 v3 h-9 v9 h-2.4 Z" fill={url('trim')} />
+        <path d="M162 118 h-12 v3 h9 v9 h2.4 Z" fill={url('trim')} />
+        <path d="M43 146 h11 v-3 h-8 v-8 h-4.4 Z" fill={url('trim')} />
+        <path d="M157 146 h-11 v-3 h8 v-8 h4.4 Z" fill={url('trim')} />
         {[
-          [36, 116],
-          [164, 116],
-          [40, 140],
-          [160, 140],
+          [45, 123],
+          [155, 123],
+          [48, 141],
+          [152, 141],
         ].map(([x, y]) => (
           <g key={`${x}${y}`}>
-            <circle cx={x} cy={y} r="1.7" fill={url('trim')} />
-            <circle cx={x - 0.5} cy={y - 0.5} r=".6" fill="#fff" opacity=".8" />
+            <circle cx={x} cy={y} r="1.5" fill={url('trim')} />
+            <circle cx={x - 0.4} cy={y - 0.4} r=".5" fill="#fff" opacity=".8" />
           </g>
         ))}
-        {/* feet */}
-        <rect x="38" y="146" width="14" height="5" rx="1.5" fill={url('trim')} />
-        <rect x="148" y="146" width="14" height="5" rx="1.5" fill={url('trim')} />
+        <rect x="47" y="146" width="12" height="4.5" rx="1.4" fill={url('trim')} />
+        <rect x="141" y="146" width="12" height="4.5" rx="1.4" fill={url('trim')} />
 
-        {/* emblem badge */}
+        {/* emblem crest on top of the frame */}
         <g className="cart-emblem">
-          <circle cx="100" cy="131" r="11.5" fill={rim} opacity=".35" />
-          <circle cx="100" cy="131" r="10" fill={url('trim')} stroke="#000" strokeOpacity=".5" strokeWidth=".5" />
-          <circle cx="100" cy="131" r="7.6" fill={hsl(h, 70, 18)} stroke="#000" strokeOpacity=".5" strokeWidth=".5" />
+          <circle cx="100" cy="4" r="9.5" fill={rim} opacity=".35" />
+          <circle cx="100" cy="4" r="7.8" fill={url('trim')} stroke="#000" strokeOpacity=".5" strokeWidth=".5" />
+          <circle cx="100" cy="4" r="5.9" fill={hsl(h, 70, 16)} stroke="#000" strokeOpacity=".5" strokeWidth=".5" />
           <path
             d={ICONS[c.icon] ?? ICONS.star}
-            transform="translate(100 131) scale(.22) translate(-50 -52)"
+            transform="translate(100 4) scale(.17) translate(-50 -52)"
             fill={gold ? '#ffd76a' : rimHi}
             stroke={gold ? '#fff2c0' : '#fff'}
             strokeWidth="3"
             strokeLinejoin="round"
           />
-          <ellipse cx="97.5" cy="126.5" rx="4.5" ry="1.8" fill="#fff" opacity=".35" transform="rotate(-25 97.5 126.5)" />
+          <ellipse cx="98" cy=".6" rx="3.6" ry="1.4" fill="#fff" opacity=".35" transform="rotate(-25 98 .6)" />
         </g>
 
-        <g className="cart-props">
-          <Props theme={theme} h={h} />
-        </g>
+        {!paint && (
+          <g className="cart-props">
+            <Props theme={theme} h={h} />
+          </g>
+        )}
       </svg>
       {skin && (
         <span className="cart-skin-wrap">
@@ -389,12 +408,11 @@ function Backdrop({ h, id, url }: { h: number; id: (s: string) => string; url: (
           <stop offset="1" stopColor={hsl(h, 100, 70)} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <ellipse cx="100" cy="76" rx="100" ry="82" fill={url('glow')} />
+      <ellipse cx="100" cy="72" rx="104" ry="86" fill={url('glow')} />
       <g className="cart-ring" fill="none">
-        <circle cx="100" cy="66" r="64" stroke={hsl(h, 100, 60)} strokeOpacity=".25" strokeWidth="7" />
-        <circle cx="100" cy="66" r="64" stroke={hsl(h, 100, 72)} strokeWidth="1.6" />
-        <circle cx="100" cy="66" r="72" stroke={hsl(h, 100, 70)} strokeOpacity=".8" strokeWidth="2.4" strokeDasharray="38 18 6 18" strokeLinecap="round" />
-        <circle cx="100" cy="66" r="57" stroke={hsl(h, 100, 85)} strokeOpacity=".35" strokeWidth=".8" strokeDasharray="2 5" />
+        <circle cx="100" cy="64" r="74" stroke={hsl(h, 100, 60)} strokeOpacity=".25" strokeWidth="7" />
+        <circle cx="100" cy="64" r="74" stroke={hsl(h, 100, 72)} strokeWidth="1.6" />
+        <circle cx="100" cy="64" r="81" stroke={hsl(h, 100, 70)} strokeOpacity=".75" strokeWidth="2.2" strokeDasharray="40 20 6 20" strokeLinecap="round" />
       </g>
       <ellipse cx="100" cy="150" rx="92" ry="12" fill={url('pool')} />
       <ellipse cx="100" cy="149" rx="74" ry="7" fill={url('floor')} />

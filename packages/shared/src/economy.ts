@@ -1,7 +1,7 @@
 /** Доля «дома» в апгрейде и контрактах — чтобы матожидание было чуть меньше ставки, как в реальных играх. */
 export const HOUSE_EDGE = 0.05;
 export const UPGRADE_MIN_CHANCE = 0.01;
-export const UPGRADE_MAX_CHANCE = 0.8;
+export const UPGRADE_MAX_CHANCE = 0.75;
 export const UPGRADE_MAX_ITEMS = 6;
 export const CONTRACT_MIN_ITEMS = 3;
 export const CONTRACT_MAX_ITEMS = 10;

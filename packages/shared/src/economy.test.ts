@@ -6,7 +6,7 @@ describe('upgrade', () => {
     expect(upgradeChance(100, 200)).toBeCloseTo(0.475);
   });
   it('is clamped', () => {
-    expect(upgradeChance(100, 101)).toBe(0.8);
+    expect(upgradeChance(100, 101)).toBe(0.75);
     expect(upgradeChance(1, 100000)).toBe(0.01);
   });
   it('inverts', () => {
