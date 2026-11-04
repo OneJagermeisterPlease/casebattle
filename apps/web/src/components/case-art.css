@@ -86,25 +86,27 @@
   }
 }
 
-/* Featured skin lying diagonally across the open case. */
+/* Featured skin: large, diagonally across the whole cover (over the painting and the chest). */
 .cart-skin-wrap {
   position: absolute;
-  left: 7%;
-  right: 5%;
-  top: 54%;
-  bottom: 0;
+  z-index: 3;
+  left: -8%;
+  right: -8%;
+  top: 26%;
+  bottom: 4%;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transform: rotate(-8deg);
+  transform: rotate(-16deg);
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.3);
 }
 .cart-skin {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 0 4px var(--rar, #e4ae39)) drop-shadow(0 5px 4px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 10px var(--rar, #e4ae39))
+    drop-shadow(0 10px 8px rgba(0, 0, 0, 0.85));
 }
 
 /* Official CS2 crate image over the lit backdrop. */
@@ -121,7 +123,7 @@
 /* Hover hooks (parent .case-card already scales .case-art). */
 .case-card:hover .cart-skin-wrap,
 .case-pick:hover .cart-skin-wrap {
-  transform: rotate(-4deg) translateY(-6%) scale(1.07);
+  transform: rotate(-12deg) translateY(-5%) scale(1.08);
 }
 .case-card:hover .cart-crate-img {
   transform: translateY(-4%);

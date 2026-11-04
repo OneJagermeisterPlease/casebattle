@@ -2327,7 +2327,14 @@ label.field {
 }
 .wheel-arc,
 .wheel-arc-glow::before {
-  background: conic-gradient(from 0deg, var(--arc-a) 0deg, var(--arc-b) calc(var(--p) * 360deg), transparent calc(var(--p) * 360deg));
+  /* Дуга шанса растёт симметрично от низа круга: 50% — вся нижняя половина. */
+  background: conic-gradient(
+    from calc(180deg - var(--p) * 180deg),
+    var(--arc-a) 0deg,
+    var(--arc-b) calc(var(--p) * 180deg),
+    var(--arc-a) calc(var(--p) * 360deg),
+    transparent calc(var(--p) * 360deg)
+  );
   -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 15px), #000 calc(100% - 14px), #000 calc(100% - 2px), transparent calc(100% - 1px));
   mask: radial-gradient(closest-side, transparent calc(100% - 15px), #000 calc(100% - 14px), #000 calc(100% - 2px), transparent calc(100% - 1px));
 }

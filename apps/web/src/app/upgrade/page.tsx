@@ -14,12 +14,19 @@ import { formatCoins } from '@/lib/format';
 import { lose as loseSound, tick, whoosh, win as winSound } from '@/lib/sfx';
 import { errText, useToast } from '@/lib/toast';
 
-const SPIN_MS = 5000;
+const SPIN_SLOW_MS = 6000;
+const SPIN_FAST_MS = 2000;
+const TURNS = 6;
 const TICKS = 60;
 const SHARDS = 14;
 
 /** Плавное замедление стрелки (≈ cubic-bezier(0.1, 0.7, 0.1, 1)). */
-const spinEase = (u: number) => 1 - Math.pow(1 - u, 3.6);
+const spinEase = (u: number) => 1 - Math.pow(1 - u, 4.2);
+
+/** Угол стрелки (по часовой от верха) для броска: зона выигрыша — дуга шириной chance·360° с центром внизу. */
+const pointerAngle = (roll: number, chance: number) => 180 - 180 * chance + 360 * roll;
+/** Деление на угле deg подсвечено, если попадает в дугу шанса. */
+const inArc = (deg: number, chance: number) => Math.abs(deg - 180) <= 180 * chance;
 
 type Result = {
   win: boolean;
@@ -43,6 +50,15 @@ export default function UpgradePage() {
   const [minPrice, setMinPrice] = useState<number | null>(null);
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
   const [spinning, setSpinning] = useState(false);
+  const [fast, setFast] = useState(false);
+  useEffect(() => {
+    try {
+      setFast(localStorage.getItem('cc_fast_upgrade') === '1');
+    } catch {
+      // нет доступа к localStorage
+    }
+  }, []);
+  const spinMs = fast ? SPIN_FAST_MS : SPIN_SLOW_MS;
   const [result, setResult] = useState<Result | null>(null);
   const [angle, setAngle] = useState(0);
   const angleRef = useRef(0);
@@ -62,7 +78,7 @@ export default function UpgradePage() {
     let prevT = t0;
     let seg = Math.floor(from / (360 / TICKS));
     const step = (now: number) => {
-      const u = Math.min(1, (now - t0) / SPIN_MS);
+      const u = Math.min(1, (now - t0) / spinMs);
       const a = from + (to - from) * spinEase(u);
       el.style.transform = `rotate(${a}deg)`;
       const v = (a - prev) / Math.max(1, now - prevT); // deg/ms
@@ -165,9 +181,9 @@ export default function UpgradePage() {
           targetItemId: target.id,
         },
       });
-      // Указатель проходит 5 полных оборотов и останавливается на значении броска.
+      // Стрелка делает несколько полных оборотов и останавливается на угле броска.
       const base = angleRef.current - (angleRef.current % 360);
-      const next = base + 360 * 5 + res.roll * 360;
+      const next = base + 360 * (fast ? 3 : TURNS) + pointerAngle(res.roll, res.chance);
       const from = angleRef.current;
       angleRef.current = next;
       animatePointer(from, next);
@@ -187,7 +203,7 @@ export default function UpgradePage() {
         setExtra('');
         loadInventory();
         toast(res.win ? 'Апгрейд удался!' : 'Апгрейд не удался', res.win ? 'ok' : 'err');
-      }, SPIN_MS + 100);
+      }, spinMs + 100);
     } catch (e) {
       setSpinning(false);
       toast(errText(e), 'err');
@@ -241,7 +257,7 @@ export default function UpgradePage() {
                     y1={major ? 4 : 7}
                     x2="150"
                     y2="15"
-                    className={i / TICKS < shownChance ? 'lit' : ''}
+                    className={inArc((i * 360) / TICKS, shownChance) ? 'lit' : ''}
                     strokeWidth={major ? 2 : 1.2}
                     transform={`rotate(${(i * 360) / TICKS} 150 150)`}
                   />
@@ -305,6 +321,23 @@ export default function UpgradePage() {
               баланс: <Price value={me?.balance ?? 0} size={12} />
             </span>
           </div>
+          <label className="toggle" title="Короткая прокрутка вместо долгой">
+            <input
+              type="checkbox"
+              checked={fast}
+              disabled={spinning}
+              onChange={(e) => {
+                setFast(e.target.checked);
+                try {
+                  localStorage.setItem('cc_fast_upgrade', e.target.checked ? '1' : '0');
+                } catch {
+                  // ignore
+                }
+              }}
+            />
+            <i />
+            Быстрый апгрейд
+          </label>
           {me ? (
             <button className="btn btn-primary btn-lg btn-block" disabled={!target || stake <= 0 || spinning || extraCents > (me?.balance ?? 0)} onClick={go}>
               {spinning ? 'Крутим…' : 'Прокачать'}

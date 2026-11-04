@@ -20,9 +20,8 @@ OUT = ROOT / "apps/web/public/cases/art"
 MANIFEST = ROOT / "apps/web/src/lib/caseArtManifest.ts"
 
 STYLE = (
-    "vibrant comic book splash art, bold black ink outlines, cel shading, graffiti street-art style, "
-    "explosive neon saturated colors, high contrast, dynamic composition, character holding a large gun in the foreground, "
-    "detailed background, glowing highlights, poster illustration, no text, no letters, no logo, no watermark"
+    "esports splash art, semi-realistic glossy digital painting, neon rim light, "
+    "vivid saturated red purple blue orange colors, high contrast, dramatic, sharp detail"
 )
 
 COLORS = {
