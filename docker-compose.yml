@@ -1,14 +1,35 @@
+# Продакшен-запуск на своём сервере: docker compose up -d --build
 services:
-  postgres:
-    image: postgres:17-alpine
+  api:
+    build: { context: ., target: api }
+    restart: unless-stopped
+    env_file: apps/api/.env
     environment:
-      POSTGRES_USER: casebattle
-      POSTGRES_PASSWORD: casebattle
-      POSTGRES_DB: casebattle
-    ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
+      DATABASE_URL: file:/data/casebattle.db
+      WEB_ORIGIN: ${PUBLIC_URL:-http://localhost}
+    volumes:
+      - data:/data
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: /api
+    restart: unless-stopped
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web, api]
+
 volumes:
-  pgdata:
+  data:
+  caddy:

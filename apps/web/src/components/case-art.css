@@ -1,0 +1,149 @@
+/* Volumetric case cover (CaseArt.tsx). Original art drawn in SVG/CSS. */
+
+/* Default size with zero specificity so contextual rules in globals.css win. */
+:where(.cart) {
+  width: 170px;
+  height: 140px;
+}
+
+.cart {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  container-type: size;
+  isolation: isolate;
+  user-select: none;
+  vertical-align: middle;
+}
+
+/* Home grid: a little larger than the old flat icon so the scene reads. */
+.case-card .case-art.cart {
+  width: 196px;
+  height: 160px;
+}
+@media (max-width: 900px) {
+  .case-card .case-art.cart {
+    width: 150px;
+    height: 124px;
+  }
+}
+
+/* The art paints its own shadows/glow; drop the generic image drop-shadow. */
+.case-art.cart,
+.case-card .case-art.cart,
+.case-hero .case-art.cart {
+  filter: none;
+}
+
+.cart > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+
+/* Painted lid scene: graded toward the case hue. */
+.cart-grade {
+  mix-blend-mode: color;
+  opacity: 0.28;
+}
+
+/* Blurred, darkened copy of the lid scene as a depth glow behind the chest. */
+.cart-bgimg {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: -4%;
+  bottom: 6%;
+  width: 84%;
+  height: 98%;
+  object-fit: cover;
+  border-radius: 50%;
+  filter: blur(14px) brightness(0.6) saturate(1.4);
+  opacity: 0.85;
+  -webkit-mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Ring: static on grids, slow spin on the case page hero. */
+.cart-ring {
+  transform-box: view-box;
+  transform-origin: 100px 66px;
+}
+.case-hero .cart-ring {
+  animation: cart-spin 30s linear infinite;
+}
+@keyframes cart-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Featured skin lying diagonally across the open case. */
+.cart-skin-wrap {
+  position: absolute;
+  left: 3%;
+  right: 1%;
+  top: 33%;
+  bottom: 9%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: rotate(-11deg);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.3);
+}
+.cart-skin {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px var(--rar, #e4ae39)) drop-shadow(0 5px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Official CS2 crate image over the lit backdrop. */
+.cart-crate-img {
+  position: absolute;
+  inset: 8% 6% 10%;
+  width: 88%;
+  height: 82%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6));
+  transition: transform 0.3s;
+}
+
+/* Hover hooks (parent .case-card already scales .case-art). */
+.case-card:hover .cart-skin-wrap,
+.case-pick:hover .cart-skin-wrap {
+  transform: rotate(-6deg) translateY(-7%) scale(1.07);
+}
+.case-card:hover .cart-crate-img {
+  transform: translateY(-4%);
+}
+
+/* Small renders (battle lists, round strip): box + skin only. */
+@container (max-width: 72px) {
+  .cart-ring,
+  .cart-props,
+  .cart-bgimg {
+    display: none;
+  }
+  .cart-skin-wrap {
+    left: 4%;
+    right: 2%;
+    top: 36%;
+    bottom: 8%;
+  }
+  .cart-skin {
+    filter: drop-shadow(0 0 1.5px var(--rar, #e4ae39)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.85));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-hero .cart-ring {
+    animation: none;
+  }
+}

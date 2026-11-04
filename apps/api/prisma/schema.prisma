@@ -1,42 +1,37 @@
-// Черновик схемы — уточняется в задаче M0 «Схема БД».
-// Все суммы — демо-монеты в «копейках» (целые числа), реальных денег в системе нет.
+// Все суммы — демо-монеты в сотых долях (1 coin = 100). Реальных денег в системе нет.
+// SQLite для нулевой настройки; для прода меняется provider на "postgresql".
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Rarity {
-  common
-  uncommon
-  rare
-  epic
-  legendary
-}
-
-enum BattleStatus {
-  waiting
-  running
-  finished
-  cancelled
-}
-
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  passwordHash String
-  nickname     String        @unique
-  balance      Int           @default(0)
-  isBot        Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  transactions Transaction[]
-  inventory    InventoryItem[]
-  seeds        FairSeed[]
-  battleSlots  BattlePlayer[]
+  id                 String          @id @default(cuid())
+  nickname           String          @unique
+  passwordHash       String
+  telegramId         String?         @unique
+  telegramUsername   String?
+  isBot              Boolean         @default(false)
+  isAdmin            Boolean         @default(false)
+  isBanned           Boolean         @default(false)
+  balance            Int             @default(0)
+  lastDailyAt        DateTime?
+  serverSeed         String
+  serverSeedHash     String
+  clientSeed         String
+  nonce              Int             @default(0)
+  prevServerSeed     String?
+  prevServerSeedHash String?
+  createdAt          DateTime        @default(now())
+  transactions       Transaction[]
+  inventory          InventoryItem[]
+  battleSlots        BattlePlayer[]
+  promoUses          PromoUse[]
 }
 
 model Transaction {
@@ -44,82 +39,129 @@ model Transaction {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   amount    Int
-  reason    String   // signup_bonus | daily_bonus | case_open | item_sell | battle_win | upgrade ...
+  reason    String
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
 }
 
 model Item {
-  id        String     @id @default(cuid())
-  name      String
-  rarity    Rarity
-  price     Int
-  imageUrl  String
-  caseItems CaseItem[]
-  inventory InventoryItem[]
+  id          String          @id
+  weapon      String
+  finish      String
+  kind        String
+  rarity      String
+  price       Int
+  hue         Int
+  pattern     String
+  imageUrl    String?
+  caseItems   CaseItem[]
+  inventory   InventoryItem[]
+  battleDrops BattleDrop[]
+
+  @@index([price])
 }
 
 model Case {
-  id       String     @id @default(cuid())
-  slug     String     @unique
-  name     String
-  price    Int
-  imageUrl String
-  isActive Boolean    @default(true)
-  items    CaseItem[]
+  id          String          @id
+  slug        String          @unique
+  name        String
+  category    String
+  sortOrder   Int
+  price       Int
+  hue         Int
+  icon        String
+  imageUrl    String?
+  limitTotal  Int?
+  limitOpened Int             @default(0)
+  isActive    Boolean         @default(true)
+  items       CaseItem[]
+  drops       InventoryItem[]
 }
 
 model CaseItem {
   caseId String
   itemId String
   weight Int
-  case   Case @relation(fields: [caseId], references: [id])
-  item   Item @relation(fields: [itemId], references: [id])
+  case   Case   @relation(fields: [caseId], references: [id])
+  item   Item   @relation(fields: [itemId], references: [id])
 
   @@id([caseId, itemId])
 }
 
 model InventoryItem {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   itemId    String
-  user      User      @relation(fields: [userId], references: [id])
-  item      Item      @relation(fields: [itemId], references: [id])
-  soldAt    DateTime?
-  createdAt DateTime  @default(now())
+  price     Int
+  status    String   @default("owned")
+  source    String
+  caseId    String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  item      Item     @relation(fields: [itemId], references: [id])
+  case      Case?    @relation(fields: [caseId], references: [id])
+
+  @@index([userId, status])
+  @@index([createdAt])
 }
 
-model FairSeed {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id])
-  serverSeed     String
-  serverSeedHash String
-  clientSeed     String
-  nonce          Int       @default(0)
-  revealedAt     DateTime?
+model PromoCode {
+  code    String     @id
+  amount  Int
+  maxUses Int?
+  uses    Int        @default(0)
+  usedBy  PromoUse[]
+}
+
+model PromoUse {
+  userId String
+  code   String
+  user   User      @relation(fields: [userId], references: [id])
+  promo  PromoCode @relation(fields: [code], references: [code])
+
+  @@id([userId, code])
 }
 
 model Battle {
-  id         String         @id @default(cuid())
-  mode       String         // 1v1 | 1v1v1 | 1v1v1v1 | 2v2
-  caseIds    String[]
-  status     BattleStatus   @default(waiting)
-  serverSeed String
-  createdAt  DateTime       @default(now())
-  players    BattlePlayer[]
+  id             String         @id @default(cuid())
+  mode           String
+  crazy          Boolean        @default(false)
+  caseIds        String // JSON-массив id кейсов по раундам
+  cost           Int
+  status         String         @default("waiting")
+  currentRound   Int            @default(0)
+  winnerTeam     Int?
+  serverSeed     String
+  serverSeedHash String
+  createdById    String
+  createdAt      DateTime       @default(now())
+  finishedAt     DateTime?
+  players        BattlePlayer[]
+  drops          BattleDrop[]
+
+  @@index([status, createdAt])
 }
 
 model BattlePlayer {
-  id       String @id @default(cuid())
   battleId String
-  userId   String
   slot     Int
-  team     Int?
+  team     Int
+  userId   String
   total    Int    @default(0)
   battle   Battle @relation(fields: [battleId], references: [id])
   user     User   @relation(fields: [userId], references: [id])
 
-  @@unique([battleId, slot])
+  @@id([battleId, slot])
+}
+
+model BattleDrop {
+  battleId String
+  round    Int
+  slot     Int
+  itemId   String
+  battle   Battle @relation(fields: [battleId], references: [id])
+  item     Item   @relation(fields: [itemId], references: [id])
+
+  @@id([battleId, round, slot])
 }

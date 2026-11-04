@@ -1,8 +1,6 @@
-import type { CaseItem } from './types';
-
 /**
  * Provably fair: результат = HMAC-SHA256(serverSeed, `${clientSeed}:${nonce}:${cursor}`).
- * Хеш serverSeed показывается игроку заранее, сам seed раскрывается после ротации,
+ * Хеш serverSeed показывается игроку заранее, сам seed раскрывается после смены,
  * и любой может пересчитать результат.
  */
 export async function sha256Hex(input: string): Promise<string> {
@@ -29,7 +27,7 @@ export async function rollFloat(
   return parseInt(toHex(sig).slice(0, 13), 16) / 2 ** 52;
 }
 
-export function pickByWeight<T extends Pick<CaseItem, 'weight'>>(entries: T[], roll: number): T {
+export function pickByWeight<T extends { weight: number }>(entries: T[], roll: number): T {
   if (entries.length === 0) throw new Error('empty case');
   const total = entries.reduce((sum, e) => sum + e.weight, 0);
   let target = roll * total;

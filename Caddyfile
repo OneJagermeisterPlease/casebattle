@@ -1,0 +1,10 @@
+# SITE_ADDRESS: домен (тогда Caddy сам получит HTTPS-сертификат) или :80 для доступа по IP.
+{$SITE_ADDRESS::80} {
+	encode gzip
+	handle_path /api/* {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
