@@ -6,6 +6,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: 'file:./test.db',
       CATALOG: 'generated',
+      STARTING_BALANCE: '100000',
+      DAILY_BONUS: '25000',
       BATTLE_ROUND_MS: '5',
       BATTLE_START_DELAY_MS: '5',
       ADMIN_NICKNAME: 'testadmin',

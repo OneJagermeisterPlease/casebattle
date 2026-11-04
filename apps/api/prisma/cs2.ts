@@ -53,13 +53,13 @@ const POPULARITY: Record<string, number> = {
 
 // Цены в сотых долях монеты.
 const RARITY_PRICE: Record<Rarity, [number, number]> = {
-  consumer: [10, 60],
-  industrial: [40, 300],
-  milspec: [150, 1500],
-  restricted: [800, 6000],
-  classified: [3000, 30000],
-  covert: [15000, 180000],
-  gold: [120000, 3000000],
+  consumer: [100, 600],
+  industrial: [300, 1800],
+  milspec: [600, 8000],
+  restricted: [3000, 40000],
+  classified: [15000, 200000],
+  covert: [60000, 1500000],
+  gold: [700000, 25000000],
 };
 
 function hash(s: string): number {

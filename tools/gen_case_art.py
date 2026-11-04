@@ -36,49 +36,87 @@ GEMS = {
 }
 
 FIXED = {
-    "rookie": "young army recruit in a training camp at dawn, obstacle course, determined face",
-    "patrol": "special forces night patrol with flashlights in a rainy city alley",
-    "arsenal": "huge military armory wall full of rifles and pistols, dramatic spotlight",
-    "assault": "elite assault squad breaching a door, explosion, smoke and debris",
-    "veteran": "battle-hardened veteran commander with scars, burning battlefield behind",
-    "all-or-nothing": "high stakes poker table in a dark underground casino, stacks of chips, a combat knife stuck in the table",
-    "theme-хэллоуин": "spooky halloween night, masked scarecrow figure in a pumpkin field, full moon, bats, haunted house",
-    "theme-новый-год": "new year eve, soldier in winter gear with sparklers, snowy city, fireworks, christmas lights",
-    "theme-14-февраля": "valentine night, roses and glowing hearts, a pistol wrapped in red ribbon, romantic neon city",
-    "theme-8-марта": "spring celebration, elegant female sniper among tulips and mimosa flowers, soft sunlight",
-    "theme-23-февраля": "military parade, tanks and soldiers with flags, golden hour, heroic composition",
-    "theme-день-рождения": "explosive birthday party, giant cake, balloons, confetti, neon lights, gift boxes",
-    "theme-хоррор": "terrifying masked slasher in a dark abandoned mansion, flickering light, blood red tones",
-    "theme-зомби-апокалипсис": "zombie horde attacking a barricade in a ruined city, toxic green fog, survivor with rifle",
-    "theme-космическая-одиссея": "astronaut soldier floating near a space station, nebula, planets, rocket launch",
-    "theme-киберпанк": "cyberpunk mercenary girl with neon implants on a rainy rooftop, holograms, magenta and cyan",
-    "theme-дикий-запад": "lone cowboy gunslinger in a desert town at sunset, saloon, dust, revolver",
-    "theme-пираты": "pirate captain on a ship deck in a storm, treasure chest, lanterns, kraken tentacles",
-    "theme-самурай": "samurai warrior with katana under cherry blossoms, red torii gate, mist, moon",
-    "theme-фэнтези": "knight facing a giant fire-breathing dragon above a castle, magic sparks",
-    "theme-нуар": "film noir detective in trench coat and fedora, rainy night street, neon sign, smoke",
-    "theme-постапокалипсис": "wasteland raider in a gas mask, rusted cars, dust storm, radioactive glow",
-    "theme-гонки": "night street race, neon sports cars drifting, motion blur, checkered flag",
-    "theme-градиенты": "abstract liquid gradient energy waves, fade colors from purple to orange, floating knife",
-    "theme-допплер": "deep space nebula with doppler blue and ruby swirls, glowing crystal blade",
-    "theme-драконы": "giant asian dragon coiling around a mountain temple, fire and clouds",
-    "theme-неон": "neon tokyo street at night, glowing signs, rain reflections",
-    "theme-хищники": "roaring tiger and wolf in a dark jungle, glowing eyes",
-    "theme-океан": "underwater scene, great white shark, coral reef, sunken treasure",
-    "theme-пламя": "inferno, wall of fire, burning city, embers",
-    "theme-камуфляж": "sniper in ghillie suit hidden in a forest, camouflage",
-    "theme-космос": "galaxy and planets, alien landscape, starfield",
-    "theme-ядовитые": "toxic laboratory, green acid barrels, hazmat soldier",
-    "theme-призраки": "ghost ship in fog, spectral skulls, eerie blue light",
-    "theme-мрамор": "marble and damascus steel textures, ancient greek statue, gold veins",
-    "limited-полночь": "midnight city skyline, dark purple sky, lone sniper on rooftop, full moon",
-    "limited-кибер": "cyber hacker soldier with glowing visor, digital rain code, neon blue",
-    "limited-ретро": "80s synthwave retro sunset, palm trees, chrome sports car, grid horizon",
-    "limited-самурай": "ronin samurai in red armor, burning village, falling sakura petals",
-    "limited-арктика": "arctic special forces in snow storm, ice fortress, aurora borealis",
-    "limited-джекпот": "casino jackpot explosion, gold coins raining, slot machine lights, luxury",
+    # Серийные
+    "koshmar": "nightmare creature in a dark abandoned hospital, glowing eyes, fog",
+    "zombi": "zombie horde attacking a barricade in a ruined city, toxic green fog, survivor with rifle",
+    "manyak": "masked slasher with a chainsaw in a dark barn, red emergency light",
+    "vedma": "evil witch casting green magic in a haunted forest, cauldron, full moon",
+    "demon": "horned demon rising from lava and hellfire, burning city",
+    "kovboy": "lone cowboy gunslinger in a desert town at sunset, saloon, revolver",
+    "pirat": "pirate captain on a ship deck in a storm, treasure chest, lanterns",
+    "detektiv": "film noir detective in trench coat and fedora, rainy night street, neon sign",
+    "samuray": "samurai warrior with katana under cherry blossoms, red torii gate, moon",
+    "naemnik": "cyberpunk mercenary with neon implants on a rainy rooftop, holograms",
+    "astronavt": "astronaut soldier floating near a space station, nebula, planets",
+    "stalker": "stalker in a gas mask in a radioactive wasteland, rusted cars",
+    "gonschik": "street racer in neon sports car drifting at night, motion streaks",
+    "android": "chrome android soldier with glowing blue eyes in a futuristic lab",
+    "prishelets": "alien invader with a plasma rifle, flying saucers over a city",
+    "tserber": "three-headed hellhound cerberus breathing fire at the gates of hell",
+    "grifon": "golden griffin flying over mountain peaks at sunrise",
+    "kraken": "giant kraken attacking a warship in a stormy ocean",
+    "feniks": "flaming phoenix rising from ashes, explosion of fire and embers",
+    "drakon": "giant dragon breathing fire over a burning castle, epic",
+    # Стиль
+    "graffiti": "graffiti covered alley, spray paint explosion, street artist with mask",
+    "neon": "neon tokyo street at night, glowing signs, rain reflections",
+    "retro": "80s synthwave sunset, palm trees, chrome sports car, grid horizon",
+    "kamuflyazh": "sniper in ghillie suit hidden in a forest, camouflage",
+    "mramor": "marble greek statue with gold veins, ancient temple",
+    "doppler": "deep space nebula with blue and ruby swirls, glowing crystal blade",
+    "gradient": "abstract liquid gradient energy waves from purple to orange",
+    "hischniki": "roaring tiger and wolf in a dark jungle, glowing eyes",
+    "okean": "underwater scene with great white shark, coral reef, sunken treasure",
+    "plamya": "wall of fire, burning city, flying embers",
+    # Фирменные (праздники и турниры)
+    "hellouin": "spooky halloween night, scarecrow in a pumpkin field, full moon, bats, haunted house",
+    "novyy-god": "new year eve, soldier in winter gear with sparklers, snowy city, fireworks",
+    "14-fevralya": "valentine night, roses and glowing hearts, pistol wrapped in red ribbon",
+    "8-marta": "spring celebration, elegant female sniper among tulips and mimosa",
+    "23-fevralya": "military parade, tanks and soldiers with flags, golden hour",
+    "den-rozhdeniya": "explosive birthday party, giant cake, balloons, confetti, neon",
+    "turnir": "esports tournament arena with crowd, spotlights, trophy on stage",
+    "final": "grand final esports stage, confetti, golden trophy",
+    "liga": "esports league players at computers on stage, blue lights",
+    "kubok": "giant golden cup trophy with laurel, fireworks",
+    "izumrud": "treasure vault full of glowing green emeralds",
+    "rubin": "treasure vault full of glowing red rubies",
+    "sapfir": "treasure vault full of glowing blue sapphires",
+    "almaz": "giant shining diamond in a dark vault, light rays",
+    "slitok": "stacks of gold bars in a bank vault, golden light",
+    "grand-slem": "luxury casino jackpot, gold coins raining, champagne",
+    "chernyy-almaz": "black diamond on velvet, purple light, luxury",
+    "magnat": "billionaire in a penthouse with gold and money, city skyline",
+    "imperator": "emperor on a golden throne, royal palace",
+    "kripta": "golden crypto coins and holographic charts, cyber vault",
+    # Операции
+    "operatsiya-groza": "special forces in a thunderstorm, lightning over a battlefield",
+    "operatsiya-proryv": "soldiers breaching an enemy wall, explosion, smoke",
+    "operatsiya-shtorm": "naval assault on a beach from landing boats, storm",
+    "operatsiya-tsitadel": "assault on a mountain fortress at night, searchlights",
+    "operatsiya-ischeyka": "tracker dog and sniper hunting in a misty forest",
 }
 
+ICON_SCENE = {
+    "gem": "glowing gemstones and crystals in a treasure cave",
+    "crown": "royal treasure vault with golden crown",
+    "knife": "assassin wielding a combat knife",
+    "glove": "special forces operator wearing tactical gloves",
+    "target": "elite soldier aiming a rifle",
+    "skull": "dark skull warrior",
+    "moon": "night scene under full moon",
+    "katana": "ninja warrior with katana",
+    "flower": "geisha among sakura flowers",
+    "rocket": "retro-futuristic rocket and astronaut",
+    "chip": "cyberpunk hacker with neon implants",
+    "bolt": "electric neon energy explosion",
+    "medal": "decorated special forces soldier",
+    "shield": "armored superhero soldier with shield",
+    "star": "hero under falling stars",
+    "box": "military supply crates",
+    "leaf": "soldier in a jungle",
+    "anchor": "pirate ship",
+}
 
 SETTINGS = [
     "in a desert warzone at sunset", "in a neon cyberpunk city at night", "in snowy mountains during a blizzard",
@@ -94,24 +132,22 @@ def setting(slug: str) -> str:
 
 
 def prompt_for(c: dict) -> str | None:
-    slug, cat, name = c["slug"], c["category"], c["name"]
+    slug, cat, name, icon = c["slug"], c["category"], c["name"], c.get("icon", "star")
     if c.get("imageUrl"):
         return None  # официальный кейс CS2 со своей картинкой
     if slug in FIXED:
         return FIXED[slug]
-    if cat == "Цвета":
-        return f"abstract {COLORS.get(slug, 'colorful')} energy explosion, floating weapon parts, smoke and sparks"
-    if cat == "Премиум":
-        gem = GEMS.get(slug.removeprefix("gem-"), "precious gem")
-        return f"treasure vault full of glowing {gem} crystals and gold coins, luxurious, magical light"
-    if cat == "Оружейные":
+    if slug.startswith("weapon-"):
         w = re.sub(r" для всех$", "", name)
         return f"elite soldier holding a {w} {setting(slug)}, dramatic action pose, smoke and sparks"
-    if cat == "Ножевые":
-        return f"assassin wielding a {name} {setting(slug)}, glowing blade, sparks, dynamic action"
-    if cat == "Перчаточные":
-        return f"special forces operator wearing {name} gloves {setting(slug)}, close-up, gritty, dramatic light"
-    return f"{name}, action scene, soldier, explosions"
+    if slug.startswith("knife-"):
+        return f"assassin wielding a {slug.removeprefix('knife-').replace('-', ' ')} knife {setting(slug)}, glowing blade, sparks"
+    if slug.startswith("gloves"):
+        return f"special forces operator wearing tactical gloves {setting(slug)}, close-up, gritty"
+    if cat == "Бонусные":
+        return f"treasure vault full of glowing gemstones and gold coins, magical light, {setting(slug)}"
+    base = ICON_SCENE.get(icon, "soldier in action")
+    return f"{base} {setting(slug)}, dramatic action"
 
 
 def main():

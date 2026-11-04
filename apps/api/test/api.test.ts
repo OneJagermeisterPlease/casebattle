@@ -138,7 +138,7 @@ describe('battle modes', () => {
     it(`${mode}${crazy ? ' crazy' : ''} picks the right winner`, async () => {
       const token = await register(`m${mode}${crazy ? 'c' : ''}`.replace(/v/g, 'x'));
       const { body: cases } = await call('GET', '/cases');
-      const slug = cases.find((c: { limitTotal: number | null; price: number }) => c.limitTotal === null && c.price <= 1000).slug;
+      const slug = cases.filter((c: { limitTotal: number | null }) => c.limitTotal === null).sort((a: { price: number }, b: { price: number }) => a.price - b.price)[0].slug;
       const created = await call('POST', '/battles', token, { mode, caseSlugs: [slug, slug, slug], crazy });
       await call('POST', `/battles/${created.body.id}/bots`, token);
       const b = await runToEnd(created.body.id);
@@ -155,7 +155,7 @@ describe('battle modes', () => {
   it('refunds everyone when the creator cancels', async () => {
     const token = await register('canceller');
     const { body: cases } = await call('GET', '/cases');
-    const c = cases.find((x: { limitTotal: number | null; price: number }) => x.limitTotal === null && x.price <= 1000);
+    const c = cases.filter((x: { limitTotal: number | null }) => x.limitTotal === null).sort((a: { price: number }, b: { price: number }) => a.price - b.price)[0];
     const created = await call('POST', '/battles', token, { mode: '1v1', caseSlugs: [c.slug], crazy: false });
     const cancel = await call('POST', `/battles/${created.body.id}/cancel`, token);
     expect(cancel.body.status).toBe('cancelled');
@@ -179,7 +179,7 @@ describe('selling and promos', () => {
   it('applies a promo code once', async () => {
     const token = await register('promo');
     const first = await call('POST', '/me/promo', token, { code: 'demo' });
-    expect(first.body.balance).toBe(150000);
+    expect(first.body.balance).toBe(110000);
     expect((await call('POST', '/me/promo', token, { code: 'DEMO' })).status).toBe(400);
   });
 });

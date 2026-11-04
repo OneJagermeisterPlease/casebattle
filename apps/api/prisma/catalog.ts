@@ -102,13 +102,13 @@ const FINISHES = [
 
 // Цены в сотых долях монеты: [мин, макс]
 const RARITY_PRICE: Record<Rarity, [number, number]> = {
-  consumer: [10, 80],
-  industrial: [60, 350],
-  milspec: [250, 1500],
-  restricted: [1200, 6000],
-  classified: [5000, 25000],
-  covert: [20000, 120000],
-  gold: [150000, 2500000],
+  consumer: [100, 600],
+  industrial: [300, 1800],
+  milspec: [600, 8000],
+  restricted: [3000, 40000],
+  classified: [15000, 200000],
+  covert: [60000, 1500000],
+  gold: [700000, 25000000],
 };
 
 const GUN_RARITIES: [Rarity, number][] = [
@@ -183,11 +183,17 @@ export interface CaseSpec {
 }
 
 const hueOf = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const TRANSLIT: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n',
+  о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '',
+  э: 'e', ю: 'yu', я: 'ya',
+};
+/** URL-slug латиницей: «Новый год» → novyy-god. */
 const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/★/g, '')
-    .replace(/[^a-z0-9а-яё]+/gi, '-')
+  [...s.toLowerCase().replace(/★/g, '')]
+    .map((ch) => TRANSLIT[ch] ?? ch)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
 /** «Красивая» цена кейса: две значащие цифры с девяткой на конце (139, 1 490, 29). */
@@ -199,121 +205,199 @@ function nicePrice(cents: number): number {
 }
 
 const RTP = 0.9;
+
+/** Лестница цен кейсов (в монетах), как на популярных case-сайтах. */
+const LADDER = [
+  19, 29, 39, 45, 49, 55, 59, 69, 75, 79, 85, 89, 99, 105, 119, 129, 139, 149, 169, 185, 199, 249, 269, 299, 349, 399, 459, 499,
+  599, 699, 799, 899, 999, 1299, 1499, 1999, 2999, 3499, 4999, 6999, 8999, 9999, 16999, 29999, 64999, 100000,
+];
+const snapToLadder = (cents: number) =>
+  LADDER.reduce((best, p) => (Math.abs(p * 100 - cents) < Math.abs(best * 100 - cents) ? p : best), LADDER[0]!) * 100;
 const NO_RARE = (i: CatalogItem) => i.kind !== 'knife' && i.kind !== 'gloves';
 
+type Spec = [name: string, price: number, hue: number, icon: string, re?: RegExp | null];
+
+/** Тематический пул: подходящие по названию скины + дешёвая «мелочь» + ножи как мечта. */
+const FILLER: Rarity[] = ['consumer', 'milspec', 'restricted'];
+const themed = (re?: RegExp | null) =>
+  re ? (i: CatalogItem) => re.test(i.finish) || re.test(i.weapon) || FILLER.includes(i.rarity) || i.kind === 'knife' : () => true;
+
+/**
+ * Структура и цены — как на популярных case-сайтах (серийные, стиль, фирменные, оружейные, ножевые,
+ * ограниченная серия, бонусные, операции, официальные CS2). Названия и темы — свои.
+ */
 export function caseSpecs(items: CatalogItem[], crates: { id: string; name: string; image: string | null; itemIds: string[] }[] = []): CaseSpec[] {
-  const specs: CaseSpec[] = [
-    { name: 'Новичок', slug: 'rookie', category: 'Стартовые', price: 5, hue: 200, icon: 'leaf', pool: NO_RARE },
-    { name: 'Патруль', slug: 'patrol', category: 'Стартовые', price: 15, hue: 160, icon: 'shield', pool: NO_RARE },
-    { name: 'Арсенал', slug: 'arsenal', category: 'Стартовые', price: 39, hue: 30, icon: 'target', pool: () => true },
-    { name: 'Штурм', slug: 'assault', category: 'Стартовые', price: 99, hue: 0, icon: 'bolt', pool: () => true },
-    { name: 'Ветеран', slug: 'veteran', category: 'Стартовые', price: 249, hue: 270, icon: 'star', pool: () => true },
-    { name: 'Всё или ничего', slug: 'all-or-nothing', category: 'Стартовые', price: 499, hue: 0, icon: 'skull', pool: (i) => i.kind === 'knife' || i.rarity === 'consumer' || i.rarity === 'industrial', rtp: 0.85 },
-  ];
+  const specs: CaseSpec[] = [];
+  const add = (category: string, list: Spec[], extra: Partial<CaseSpec> = {}) => {
+    for (const [name, price, hue, icon, re] of list) {
+      specs.push({ name, slug: slugify(name), category, price, hue, icon, pool: themed(re), ...extra });
+    }
+  };
 
-  const colors: [string, string, number, number, Rarity[]][] = [
-    ['Серые скины', 'grey', 1, 210, ['consumer', 'industrial']],
-    ['Голубые скины', 'light-blue', 3, 205, ['consumer', 'industrial', 'milspec']],
-    ['Синие скины', 'blue', 9, 230, ['industrial', 'milspec', 'restricted']],
-    ['Фиолетовые скины', 'purple', 35, 265, ['milspec', 'restricted', 'classified']],
-    ['Розовые скины', 'pink', 120, 300, ['restricted', 'classified', 'covert']],
-    ['Красные скины', 'red', 450, 355, ['classified', 'covert', 'gold']],
-    ['Золотые скины', 'gold', 4999, 45, ['covert', 'gold']],
-  ];
-  for (const [name, slug, price, hue, rar] of colors) {
-    specs.push({ name, slug, category: 'Цвета', price, hue, icon: 'gem', pool: (i) => rar.includes(i.rarity) });
-  }
+  add('Серийные', [
+    // серия «Кошмары»
+    ['Кошмар', 39, 280, 'skull', /Blood|Death|Skull|Ghost|Haunt|Demon|Bone|Grave|Curse|Evil/i],
+    ['Зомби', 119, 95, 'biohazard', /Zombie|Toxic|Poison|Acid|Virus|Bio|Rot|Plague|Decay/i],
+    ['Маньяк', 349, 0, 'skull', /Blood|Crimson|Red|Slaughter|Kill|Death/i],
+    ['Ведьма', 699, 300, 'pumpkin', /Witch|Magic|Spell|Hex|Curse|Night/i],
+    ['Демон', 1499, 350, 'flame', /Demon|Hell|Fire|Inferno|Flame|Lava/i],
+    // серия «Герои жанров»
+    ['Ковбой', 49, 30, 'cowboy', /Desert|Sand|Copper|Rust|Wood|Western|Bandit|Outlaw|Sunset/i],
+    ['Пират', 149, 200, 'anchor', /Ocean|Sea|Water|Wave|Coral|Shark|Anchor|Pirate|Kraken|Treasure/i],
+    ['Детектив', 499, 220, 'fedora', /Noir|Black|Shadow|Dark|Smoke|Ash|Grey|Graphite|Midnight/i],
+    ['Самурай', 899, 355, 'katana', /Dragon|Samurai|Katana|Sakura|Oni|Bamboo|Koi|Shogun|Ninja|Ronin/i],
+    ['Наёмник', 2999, 300, 'chip', /Cyber|Neon|Digital|Circuit|Code|Tech|Hyper|Synth|Electric|Glitch/i],
+    // серия «Фантастика»
+    ['Астронавт', 29, 240, 'rocket', /Space|Galaxy|Nebula|Asiimov|Orbit|Moon|Star|Planet|Cosmo|Astro/i],
+    ['Сталкер', 99, 40, 'gasmask', /Rust|Wasteland|Scorch|Burn|Ash|Nuclear|Radiation|Hazard|Scrap|Decay/i],
+    ['Гонщик', 249, 15, 'flag', /Speed|Racing|Race|Turbo|Nitro|Fuel|Engine|Stripe|Velocity|Rally/i],
+    ['Андроид', 399, 185, 'chip', /Cyber|Neon|Digital|Tech|Circuit|Chrome|Mecha/i],
+    ['Пришелец', 999, 120, 'rocket', /Alien|Space|Galaxy|Nebula|Toxic|Acid/i],
+    // серия «Мифы»
+    ['Цербер', 69, 10, 'flame', /Hound|Wolf|Fire|Hell|Beast/i],
+    ['Грифон', 199, 45, 'crown', /Griffin|Eagle|Gold|Wing|Feather/i],
+    ['Кракен', 499, 190, 'anchor', /Kraken|Ocean|Sea|Wave|Tentacle|Coral/i],
+    ['Феникс', 1999, 25, 'flame', /Phoenix|Fire|Flame|Blaze|Sun|Ember/i],
+    ['Дракон', 5999, 150, 'dragon', /Dragon|Wyvern|Hydra|Serpent|Scale/i],
+  ]);
 
-  const gems: [string, number, number][] = [
-    ['Янтарный', 20, 35], ['Ониксовый', 50, 260], ['Гранатовый', 100, 345], ['Аметистовый', 250, 285],
-    ['Изумрудный', 500, 145], ['Турмалиновый', 750, 320], ['Сапфировый', 1000, 215], ['Рубиновый', 2500, 350],
-    ['Опаловый', 5000, 175], ['Бриллиантовый', 10000, 190], ['Чёрный бриллиант', 20000, 250],
-  ];
-  for (const [name, price, hue] of gems) {
-    specs.push({ name, slug: `gem-${slugify(name)}`, category: 'Премиум', price, hue, icon: price >= 5000 ? 'crown' : 'gem', pool: () => true, rtp: 0.92 });
-  }
+  add('Стиль', [
+    ['Граффити', 75, 300, 'chip', /Graffiti|Spray|Street|Tag|Paint|Pop/i],
+    ['Неон', 199, 310, 'bolt', /Neon|Glow|Light|Electric|Hyper/i],
+    ['Ретро', 189, 30, 'star', /Retro|Vintage|Classic|Old|Wood|Antique/i],
+    ['Камуфляж', 439, 100, 'leaf', /Camo|DDPAT|Forest|Desert|Sand|Jungle|Urban/i],
+    ['Мрамор', 499, 340, 'gem', /Marble|Damascus|Case Hardened|Crimson Web/i],
+    ['Допплер', 999, 280, 'gem', /Doppler|Gamma/i],
+    ['Градиент', 109, 50, 'gem', /Fade|Gradient/i],
+    ['Хищники', 50, 30, 'target', /Tiger|Wolf|Panther|Lion|Leopard|Hyper Beast|Beast/i],
+    ['Океан', 150, 195, 'anchor', /Ocean|Water|Wave|Sea|Aqua|Coral|Shark/i],
+    ['Пламя', 300, 15, 'flame', /Fire|Flame|Blaze|Inferno|Heat|Burn/i],
+  ]);
 
-  // По каждому оружию: «X для всех» — все его расцветки плюс немного ножей для мечты.
-  const weapons = [...new Set(items.filter(NO_RARE).map((i) => i.weapon))].sort();
-  for (const w of weapons) {
-    const own = items.filter((i) => i.weapon === w);
-    if (own.length < 6) continue;
+  add('Фирменные', [
+    ['Хэллоуин', 52, 30, 'pumpkin', /Blood|Death|Skull|Ghost|Haunt|Night|Bone|Witch|Orange|Pumpkin|Spider/i],
+    ['Новый год', 55, 200, 'snowflake', /Ice|Frost|Snow|Winter|Cold|Arctic|Gold|Star|Light/i],
+    ['14 февраля', 120, 340, 'heart', /Pink|Rose|Heart|Love|Red|Crimson|Cherry|Bloom|Flower/i],
+    ['8 марта', 140, 320, 'flower', /Flower|Bloom|Petal|Rose|Lily|Garden|Pink|Sakura|Spring/i],
+    ['23 февраля', 379, 120, 'medal', /Army|Camo|DDPAT|Military|Tank|Soldier|Forest|Olive|Tactical|Guard/i],
+    ['День рождения', 499, 280, 'gift', /Candy|Party|Gift|Gold|Neon|Rainbow|Fade|Hyper/i],
+    ['Турнир', 650, 45, 'medal', null],
+    ['Финал', 750, 50, 'crown', null],
+    ['Лига', 269, 210, 'shield', null],
+    ['Кубок', 1269, 40, 'crown', null],
+    ['Изумруд', 499, 145, 'gem', null],
+    ['Рубин', 999, 350, 'gem', null],
+    ['Сапфир', 1999, 215, 'gem', null],
+    ['Алмаз', 2999, 190, 'gem', null],
+    ['Слиток', 5000, 45, 'crown', null],
+    ['Гранд-слэм', 10000, 280, 'crown', null],
+    ['Чёрный алмаз', 20000, 250, 'gem', null],
+    ['Магнат', 30000, 45, 'crown', null],
+    ['Император', 50000, 0, 'crown', null],
+    ['Крипта', 100000, 35, 'crown', null],
+  ], { rtp: 0.92 });
+
+  const rarity = (r: Rarity[]) => (i: CatalogItem) => r.includes(i.rarity);
+  specs.push(
+    ...([
+      ['Сильвер', 13, 210, ['consumer', 'industrial']],
+      ['Армейское оружие', 25, 230, ['milspec', 'industrial']],
+      ['Камуфляжный', 29, 100, ['consumer', 'industrial', 'milspec']],
+      ['Зелёные скины', 59, 130, ['industrial', 'milspec', 'restricted']],
+      ['Жёлтые скины', 89, 50, ['milspec', 'restricted']],
+      ['Белые скины', 99, 0, ['consumer', 'restricted', 'classified']],
+      ['Запрещённое оружие', 99, 270, ['restricted', 'classified']],
+      ['Синие скины', 105, 225, ['milspec', 'restricted', 'classified']],
+      ['Фиолетовые скины', 129, 265, ['restricted', 'classified']],
+      ['Чёрные скины', 149, 240, ['restricted', 'classified', 'covert']],
+      ['Красные скины', 185, 355, ['classified', 'covert']],
+      ['Инь и Ян', 494, 0, ['consumer', 'classified', 'covert', 'gold']],
+      ['Засекреченное оружие', 899, 300, ['classified', 'covert']],
+      ['Тайное оружие', 4999, 355, ['covert', 'gold']],
+    ] as [string, number, number, Rarity[]][]).map(([name, price, hue, r]) => ({
+      name,
+      slug: slugify(name),
+      category: 'Оружейные',
+      price,
+      hue,
+      icon: 'gem',
+      pool: rarity(r),
+    })),
+  );
+  // «X для всех» — только самое популярное оружие.
+  for (const [w, price, hue] of [
+    ['Glock-18', 59, 120], ['USP-S', 69, 190], ['Desert Eagle', 69, 45], ['M4A1-S', 280, 210], ['AK-47', 355, 20], ['AWP', 369, 140],
+  ] as [string, number, number][]) {
     specs.push({
       name: `${w} для всех`,
       slug: `weapon-${slugify(w)}`,
       category: 'Оружейные',
-      hue: hueOf(w),
+      price,
+      hue,
       icon: 'target',
-      pool: (i) => i.weapon === w || (i.kind === 'knife' && hueOf(i.id) < 8),
+      pool: (i) => i.weapon === w || (i.kind === 'knife' && i.price < price * 100 * 60),
     });
   }
+  add('Оружейные', [
+    ['Эко-раунд', 44, 100, 'shield', /Sand|Desert|Safari|Scorch|Contractor/i],
+    ['Фарм', 55, 60, 'box', null],
+    ['Фулл-бай', 189, 20, 'target', null],
+    ['Звёзды', 25, 50, 'star', /Star|Galaxy|Space|Moon|Night/i],
+    ['Руны', 29, 280, 'moon', /Rune|Magic|Spell|Myth|Legend/i],
+    ['Магия', 75, 285, 'star', /Magic|Spell|Hex|Witch|Mystic/i],
+    ['Охота за тайным', 399, 355, 'target', null],
+    ['Смертельное оружие', 21999, 0, 'skull', null],
+  ]);
+  specs.push(
+    { name: 'Перчаточный бум', slug: 'gloves-boom', category: 'Оружейные', price: 599, hue: 25, icon: 'glove', pool: (i) => i.kind === 'gloves' || i.rarity === 'classified' || i.rarity === 'restricted', rtp: 0.88 },
+    { name: 'Перчаточный', slug: 'gloves', category: 'Оружейные', price: 6999, hue: 45, icon: 'glove', pool: (i) => i.kind === 'gloves' || i.rarity === 'covert', rtp: 0.88 },
+  );
 
-  // По каждому ножу и перчаткам: сам нож + «Тайные» скины как утешение.
-  for (const kind of ['knife', 'gloves'] as const) {
-    const types = [...new Set(items.filter((i) => i.kind === kind).map((i) => i.weapon))].sort();
-    for (const t of types) {
-      const own = items.filter((i) => i.weapon === t).map((i) => i.price).sort((a, b) => a - b);
-      specs.push({
-        price: nicePrice(own[Math.floor(own.length / 2)]! * 0.3) / 100,
-        name: t.replace('★ ', ''),
-        slug: `${kind}-${slugify(t)}`,
-        category: kind === 'knife' ? 'Ножевые' : 'Перчаточные',
-        hue: hueOf(t),
-        icon: kind === 'knife' ? 'knife' : 'glove',
-        pool: (i) => i.weapon === t || i.rarity === 'covert' || i.rarity === 'classified',
-        rtp: 0.88,
-      });
-    }
+  for (const [name, w, price, hue] of [
+    ['Штык-нож', '★ Bayonet', 16999, 200], ['Скелетный нож', '★ Skeleton Knife', 18999, 0], ['Коготь', '★ Talon Knife', 29999, 60],
+    ['Штык-нож M9', '★ M9 Bayonet', 36999, 230], ['Нож-бабочка', '★ Butterfly Knife', 64999, 330], ['Фальшион', '★ Falchion Knife', 11999, 100],
+    ['Складной нож', '★ Flip Knife', 17999, 50], ['Кукри', '★ Kukri Knife', 9999, 160], ['Бродяга', '★ Nomad Knife', 14599, 80],
+    ['Боуи', '★ Bowie Knife', 9999, 30], ['Стилет', '★ Stiletto Knife', 21999, 300], ['Нож с крюком', '★ Gut Knife', 9999, 180],
+    ['Охотничий нож', '★ Huntsman Knife', 10499, 120], ['Наваха', '★ Navaja Knife', 6999, 20], ['Тычковые ножи', '★ Shadow Daggers', 8499, 270],
+  ] as [string, string, number, number][]) {
+    specs.push({ name, slug: `knife-${slugify(w)}`, category: 'Ножевые', price, hue, icon: 'knife', pool: (i) => i.weapon === w || i.rarity === 'covert', rtp: 0.88 });
   }
 
-  const themes: [string, RegExp, number][] = [
-    ['Градиенты', /Fade|Gradient/i, 50], ['Допплер', /Doppler|Gamma/i, 280], ['Драконы', /Dragon|Wyvern|Hydra/i, 10],
-    ['Неон', /Neon|Neo-Noir|Cyber/i, 300], ['Хищники', /Tiger|Wolf|Panther|Lion|Leopard|Hyper Beast|Beast/i, 30],
-    ['Океан', /Ocean|Water|Wave|Sea|Aqua|Coral|Shark/i, 195], ['Пламя', /Fire|Flame|Blaze|Inferno|Heat|Burn/i, 15],
-    ['Камуфляж', /Camo|DDPAT|Forest|Desert|Sand|Jungle|Urban/i, 90], ['Космос', /Space|Galaxy|Nebula|Asiimov|Orbit|Moon|Star/i, 240],
-    ['Ядовитые', /Toxic|Poison|Acid|Venom|Virus|Bio/i, 110], ['Призраки', /Ghost|Phantom|Spirit|Haunt|Skull|Death/i, 0],
-    ['Мрамор', /Marble|Damascus|Case Hardened|Crimson Web/i, 340],
+  const limited: [string, number, number, number, string, RegExp | null][] = [
+    ['Гейша', 69, 340, 1999, 'flower', /Sakura|Geisha|Flower|Bloom|Pink/i], ['Сэнсэй', 75, 30, 1200, 'katana', /Dragon|Samurai|Katana|Oni/i],
+    ['Ретрофутуризм', 115, 190, 950, 'rocket', /Space|Retro|Chrome|Tech/i], ['Охотник на демонов', 135, 355, 800, 'katana', /Demon|Blood|Fire/i],
+    ['Снайпер', 245, 140, 700, 'target', null], ['Профи', 349, 50, 650, 'medal', null], ['Смерть близко', 499, 0, 530, 'skull', /Death|Skull|Bone|Grave/i],
+    ['Ножи будущего', 799, 200, 600, 'knife', null], ['Супергерой', 125, 215, 550, 'shield', null], ['Убийца нубов', 80, 10, 750, 'skull', null],
+    ['Кибер', 105, 180, 800, 'chip', /Cyber|Neon|Digital|Circuit|Tech/i], ['Бродячий кот', 199, 40, 700, 'moon', /Cat|Tiger|Panther|Night/i],
+    ['Ниндзя', 89, 260, 700, 'katana', /Ninja|Shadow|Dark|Night/i], ['Легенда', 125, 45, 550, 'crown', null],
+    ['Хайп', 149, 300, 800, 'bolt', /Hyper|Neon|Pop|Graffiti/i], ['Один выстрел', 699, 0, 500, 'target', null], ['Градиент лимит', 269, 330, 700, 'gem', /Fade|Gradient/i],
   ];
-  for (const [name, re, hue] of themes) {
-    specs.push({ name, slug: `theme-${slugify(name)}`, category: 'Тематические', hue, icon: 'star', pool: (i) => re.test(i.finish) });
+  for (const [name, price, hue, limit, icon, re] of limited) {
+    specs.push({ name, slug: `limited-${slugify(name)}`, category: 'Ограниченная серия', price, hue, icon, limitTotal: limit, pool: themed(re) });
   }
 
-  // Праздники и жанры кино/игр: оформление обложки задаётся иконкой-темой.
-  const occasions: [string, string, string, number, number, RegExp][] = [
-    ['Хэллоуин', 'Праздничные', 'pumpkin', 30, 199, /Blood|Death|Skull|Ghost|Haunt|Night|Bone|Witch|Orange|Pumpkin|Spider/i],
-    ['Новый год', 'Праздничные', 'snowflake', 200, 299, /Ice|Frost|Snow|Winter|Cold|Arctic|Gold|Star|Light/i],
-    ['14 февраля', 'Праздничные', 'heart', 340, 99, /Pink|Rose|Heart|Love|Red|Crimson|Cherry|Bloom|Flower/i],
-    ['8 марта', 'Праздничные', 'flower', 320, 149, /Flower|Bloom|Petal|Rose|Lily|Garden|Pink|Sakura|Spring/i],
-    ['23 февраля', 'Праздничные', 'medal', 120, 230, /Army|Camo|DDPAT|Military|Tank|Soldier|Forest|Olive|Tactical|Guard/i],
-    ['День рождения', 'Праздничные', 'gift', 280, 500, /Candy|Party|Gift|Gold|Neon|Rainbow|Fade|Hyper/i],
-    ['Хоррор', 'Кино и игры', 'skull', 0, 349, /Blood|Death|Skull|Ghost|Haunt|Demon|Bone|Grave|Curse|Evil/i],
-    ['Зомби-апокалипсис', 'Кино и игры', 'biohazard', 95, 129, /Zombie|Toxic|Poison|Acid|Virus|Bio|Rot|Plague|Decay/i],
-    ['Космическая одиссея', 'Кино и игры', 'rocket', 240, 499, /Space|Galaxy|Nebula|Asiimov|Orbit|Moon|Star|Planet|Cosmo|Astro/i],
-    ['Киберпанк', 'Кино и игры', 'chip', 300, 699, /Cyber|Neon|Digital|Circuit|Code|Tech|Hyper|Synth|Electric|Glitch/i],
-    ['Дикий Запад', 'Кино и игры', 'cowboy', 30, 89, /Desert|Sand|Copper|Rust|Wood|Western|Bandit|Outlaw|Sunset|Gold/i],
-    ['Пираты', 'Кино и игры', 'anchor', 200, 159, /Ocean|Sea|Water|Wave|Coral|Shark|Anchor|Pirate|Kraken|Treasure/i],
-    ['Самурай', 'Кино и игры', 'katana', 355, 999, /Dragon|Samurai|Katana|Sakura|Oni|Bamboo|Koi|Shogun|Ninja|Ronin/i],
-    ['Фэнтези', 'Кино и игры', 'dragon', 150, 399, /Dragon|Wyvern|Hydra|Griffin|Phoenix|Magic|Spell|Rune|Myth|Legend/i],
-    ['Нуар', 'Кино и игры', 'fedora', 220, 249, /Noir|Black|Shadow|Dark|Night|Smoke|Ash|Grey|Graphite|Midnight/i],
-    ['Постапокалипсис', 'Кино и игры', 'gasmask', 40, 119, /Rust|Wasteland|Scorch|Burn|Ash|Nuclear|Radiation|Hazard|Scrap|Decay/i],
-    ['Гонки', 'Кино и игры', 'flag', 15, 179, /Speed|Racing|Race|Turbo|Nitro|Fuel|Engine|Stripe|Velocity|Rally/i],
-  ];
-  for (const [name, category, icon, hue, price, re] of occasions) {
-    specs.push({ name, slug: `theme-${slugify(name)}`, category, price, hue, icon, pool: (i) => re.test(i.finish) || re.test(i.weapon) || i.rarity === 'consumer' || i.kind === 'knife' });
-  }
+  add('Бонусные', [
+    ['Янтарный', 20, 35, 'gem'], ['Ониксовый', 50, 260, 'gem'], ['Гранатовый', 100, 345, 'gem'], ['Гессонитовый', 250, 25, 'gem'],
+    ['Изумрудный', 500, 145, 'gem'], ['Турмалиновый', 750, 320, 'gem'], ['Сапфировый', 1000, 215, 'gem'], ['Аметистовый', 2500, 285, 'gem'],
+    ['Рубиновый', 5000, 350, 'crown'], ['Опаловый', 10000, 175, 'crown'],
+  ], { rtp: 0.92 });
 
-  const limited: [string, number, number, number, RegExp | null][] = [
-    ['Полночь', 75, 245, 1000, /Night|Dark|Black|Shadow|Midnight/i], ['Кибер', 149, 180, 700, null],
-    ['Ретро', 99, 30, 800, null], ['Самурай', 249, 355, 600, /Dragon|Samurai|Katana|Sakura|Oni/i],
-    ['Арктика', 59, 195, 900, /Ice|Frost|Snow|Arctic|Winter|Cold/i], ['Джекпот', 999, 50, 300, null],
-  ];
-  for (const [name, price, hue, limit, re] of limited) {
-    specs.push({ name, slug: `limited-${slugify(name)}`, category: 'Лимитированные', price, hue, icon: 'moon', limitTotal: limit, pool: re ? (i) => re.test(i.finish) || i.kind === 'knife' : () => true });
-  }
+  add('Операции', [
+    ['Операция «Гроза»', 129, 230, 'bolt', /Storm|Thunder|Lightning|Electric/i],
+    ['Операция «Прорыв»', 95, 15, 'medal', null],
+    ['Операция «Шторм»', 119, 200, 'anchor', /Ocean|Sea|Wave|Water/i],
+    ['Операция «Цитадель»', 399, 270, 'shield', null],
+    ['Операция «Ищейка»', 549, 0, 'target', null],
+  ]);
 
-  // Официальные кейсы CS2 с реальным содержимым (если каталог импортирован из CS2).
+  // Официальные кейсы CS2 с реальным содержимым — 30 самых известных (больше всего предметов).
   const byId = new Map(items.map((i) => [i.id, i]));
-  for (const c of crates.filter((c) => c.itemIds.length >= 8 && !c.name.includes('Souvenir')).sort((a, b) => a.name.localeCompare(b.name))) {
+  const official = crates
+    .filter((c) => c.itemIds.length >= 8 && !c.name.includes('Souvenir'))
+    .sort((a, b) => b.itemIds.length - a.itemIds.length)
+    .slice(0, 30)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  for (const c of official) {
     const ids = new Set(c.itemIds);
     specs.push({
       name: c.name,
@@ -360,7 +444,7 @@ export function buildCases(items: CatalogItem[], specs: CaseSpec[]): CatalogCase
     if (!price) {
       // Цена между дешёвой и средней частью содержимого — так кейс выглядит «выгодно» и даёт шанс на дорогое.
       const q = (f: number) => pool[Math.floor((pool.length - 1) * f)]!.price;
-      price = nicePrice(Math.sqrt(q(0.15) * q(0.6)));
+      price = snapToLadder(Math.sqrt(q(0.15) * q(0.6)));
     }
     pool = pool.filter((i) => i.price >= price * 0.02 && i.price <= price * 60);
     const size = Math.min(spec.size ?? 32, pool.length);
@@ -393,7 +477,7 @@ export function buildCases(items: CatalogItem[], specs: CaseSpec[]): CatalogCase
 export const BOT_NAMES = ['Бот Алекс', 'Бот Вика', 'Бот Макс', 'Бот Лиса', 'Бот Тень', 'Бот Шторм', 'Бот Кира', 'Бот Гром'];
 
 export const PROMO_CODES = [
-  { code: 'DEMO', amount: 50000, maxUses: null },
-  { code: 'WELCOME', amount: 25000, maxUses: null },
-  { code: 'BATTLE', amount: 100000, maxUses: 100 },
+  { code: 'DEMO', amount: 10000, maxUses: null },
+  { code: 'WELCOME', amount: 5000, maxUses: null },
+  { code: 'BATTLE', amount: 30000, maxUses: 100 },
 ];
