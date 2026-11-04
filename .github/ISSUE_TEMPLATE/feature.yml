@@ -1,0 +1,22 @@
+name: Фича / задача
+description: Новая функциональность или задача из роадмапа
+labels: [feature]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options: [web, api, shared, infra, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Что нужно сделать
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Критерии готовности
+      placeholder: "- [ ] ..."

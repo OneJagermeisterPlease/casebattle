@@ -1,0 +1,125 @@
+// Черновик схемы — уточняется в задаче M0 «Схема БД».
+// Все суммы — демо-монеты в «копейках» (целые числа), реальных денег в системе нет.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rarity {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+}
+
+enum BattleStatus {
+  waiting
+  running
+  finished
+  cancelled
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  nickname     String        @unique
+  balance      Int           @default(0)
+  isBot        Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  inventory    InventoryItem[]
+  seeds        FairSeed[]
+  battleSlots  BattlePlayer[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  reason    String   // signup_bonus | daily_bonus | case_open | item_sell | battle_win | upgrade ...
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Item {
+  id        String     @id @default(cuid())
+  name      String
+  rarity    Rarity
+  price     Int
+  imageUrl  String
+  caseItems CaseItem[]
+  inventory InventoryItem[]
+}
+
+model Case {
+  id       String     @id @default(cuid())
+  slug     String     @unique
+  name     String
+  price    Int
+  imageUrl String
+  isActive Boolean    @default(true)
+  items    CaseItem[]
+}
+
+model CaseItem {
+  caseId String
+  itemId String
+  weight Int
+  case   Case @relation(fields: [caseId], references: [id])
+  item   Item @relation(fields: [itemId], references: [id])
+
+  @@id([caseId, itemId])
+}
+
+model InventoryItem {
+  id        String    @id @default(cuid())
+  userId    String
+  itemId    String
+  user      User      @relation(fields: [userId], references: [id])
+  item      Item      @relation(fields: [itemId], references: [id])
+  soldAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model FairSeed {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  serverSeed     String
+  serverSeedHash String
+  clientSeed     String
+  nonce          Int       @default(0)
+  revealedAt     DateTime?
+}
+
+model Battle {
+  id         String         @id @default(cuid())
+  mode       String         // 1v1 | 1v1v1 | 1v1v1v1 | 2v2
+  caseIds    String[]
+  status     BattleStatus   @default(waiting)
+  serverSeed String
+  createdAt  DateTime       @default(now())
+  players    BattlePlayer[]
+}
+
+model BattlePlayer {
+  id       String @id @default(cuid())
+  battleId String
+  userId   String
+  slot     Int
+  team     Int?
+  total    Int    @default(0)
+  battle   Battle @relation(fields: [battleId], references: [id])
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([battleId, slot])
+}
