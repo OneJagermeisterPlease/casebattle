@@ -272,3 +272,15 @@
   .cart-fx { display: none; }
   .cart-led { animation: none; }
 }
+
+/* Baked static layers (tools/bake_covers.mjs): stage + 12% bleed on every side. */
+.cart-baked {
+  position: absolute;
+  left: -12%;
+  top: -12%;
+  width: 124%;
+  height: 124%;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}

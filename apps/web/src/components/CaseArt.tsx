@@ -1,6 +1,7 @@
 import { RARITY_META, type CaseDTO } from '@casebattle/shared';
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CASE_ART } from '@/lib/caseArtManifest';
+import { BAKED } from './bakedCovers';
 import { CASE_ART_BLUR } from './caseArtBlur';
 import './case-art.css';
 
@@ -200,6 +201,12 @@ const WH = BK.y - 6 - WY;
 const CX = (F.x0 + F.x1) / 2; // front centre
 // Featured skin resting diagonally in the cavity; its lower part sinks behind the front wall.
 const SKIN = { cx: 112, cy: 98, w: 196, h: 147 };
+const LED = { x: LID.tr[0] - 4, y: LID.tr[1] - 16 };
+/** Baked layer images include this much bleed around the stage on each side (glow, ring, props). */
+export const BAKE_BLEED = 0.12;
+// Baked layer image size: grid cover (284×218 CSS px) @2x incl. bleed on every side.
+const BAKED_W = Math.round(284 * 2 * (1 + 2 * BAKE_BLEED));
+const BAKED_H = Math.round(218 * 2 * (1 + 2 * BAKE_BLEED));
 const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
 const SKIN_STYLE = {
   left: pct(SKIN.cx - SKIN.w / 2, VB_W),
@@ -213,7 +220,26 @@ const HANDLE_B: [number, number] = [F.x1 + DX - 7, F.y0 + 22 + (DY * (DX - 14)) 
 const HANDLE = `M${HANDLE_A[0]} ${HANDLE_A[1]} l3 9 L${HANDLE_B[0] + 3} ${HANDLE_B[1] + 9} L${HANDLE_B[0]} ${HANDLE_B[1]}`;
 const PLATE = { x: CX - 34, y: 136, w: 68, h: 15 };
 
-export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string }) {
+/** Bump when the drawing code of the static layers changes: stale bakes then fall back to live SVG. */
+const ART_REV = 1;
+/** Baked covers are drawn for the grid (284px wide @2x); bigger renders (case-page hero) stay live SVG. */
+const BAKED_MAX_W = 340;
+
+/** Signature of everything that affects the static (baked) layers of a cover. */
+export function coverSig(c: ArtCase): string {
+  const own = !!(c.slug && CASE_ART.has(c.slug));
+  const blurOwn = !!(c.slug && CASE_ART_BLUR.has(c.slug));
+  const key = [ART_REV, c.slug, c.name, Math.round(c.hue), c.icon, c.category ?? '', c.cover?.rarity ?? '', c.cover?.imageUrl ? 1 : 0, own ? 1 : 0, blurOwn ? 1 : 0].join('|');
+  return hashStr(key).toString(36);
+}
+
+export function CaseArt({ c, className = '', live = false }: { c: ArtCase; className?: string; live?: boolean }) {
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const [big, setBig] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (el && el.clientWidth > BAKED_MAX_W) setBig(true);
+  }, []);
   const rid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const id = (s: string) => `ca${rid}-${s}`;
   const url = (s: string) => `url(#${id(s)})`;
@@ -258,13 +284,53 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
   const imgY = WY - (WW - WH) * 0.35;
   const latchXs = Array.from({ length: latches }, (_, i) => F.x0 + 18 + (i * (F.x1 - F.x0 - 36)) / (latches - 1));
 
+  const rootProps = {
+    ref: rootRef,
+    className: `case-art cart cart-${theme} ${paint ? 'has-paint' : 'no-paint'} ${skin ? 'has-skin' : 'no-skin'} ${className}`,
+    role: 'img',
+    'aria-label': c.name,
+    style: { ['--hue' as string]: h, ['--rar' as string]: rarityColor },
+  };
+  // Live (animated) layers, shared by the baked and the full-SVG paths.
+  const skinLayer = skin && (
+    <span className="cart-skin-wrap" style={SKIN_STYLE}>
+      <span className="cart-skin-glow" />
+      <img className="cart-skin" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} />
+      <img className="cart-skin cart-skin-tint" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} aria-hidden />
+    </span>
+  );
+  const fxLayer = (
+    <span className={`cart-fx cart-fx-${fx}`} style={{ ['--fx' as string]: hsl(h, 100, 70) }} aria-hidden>
+      {Array.from({ length: 7 }, (_, i) => (
+        <i key={i} style={{ left: `${12 + ((i * 37 + variant * 11) % 76)}%`, animationDelay: `${(i * 0.53 + variant * 0.31) % 3}s` }} />
+      ))}
+    </span>
+  );
+
+  // Baked path: two pre-rendered images (static back + front) around the live layers — ~15 DOM
+  // nodes instead of ~250 SVG nodes per cover. Used when the bake matches this case exactly.
+  const sig = c.slug ? coverSig(c) : '';
+  if (!live && !big && c.slug && BAKED[c.slug] === sig) {
+    const src = (layer: string) => `/cases/baked/${c.slug}-${layer}.webp?v=${sig}`;
+    return (
+      <span {...rootProps}>
+        <span className="cart-stage">
+          <img className="cart-baked" src={src('back')} alt="" width={BAKED_W} height={BAKED_H} loading="lazy" decoding="async" draggable={false} />
+          {skinLayer}
+          <img className="cart-baked" src={src('front')} alt="" width={BAKED_W} height={BAKED_H} loading="lazy" decoding="async" draggable={false} />
+          {variant === 2 && (
+            <svg className="cart-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
+              <circle className="cart-led" cx={LED.x} cy={LED.y} r="2.4" fill={rimHi} />
+            </svg>
+          )}
+          {fxLayer}
+        </span>
+      </span>
+    );
+  }
+
   return (
-    <span
-      className={`case-art cart cart-${theme} ${paint ? 'has-paint' : 'no-paint'} ${skin ? 'has-skin' : 'no-skin'} ${className}`}
-      role="img"
-      aria-label={c.name}
-      style={{ ['--hue' as string]: h, ['--rar' as string]: rarityColor }}
-    >
+    <span {...rootProps} data-sig={sig || undefined}>
       <span className="cart-stage">
       {blur && <img className="cart-bgimg" src={blur} alt="" width={48} height={48} loading="lazy" decoding="async" draggable={false} />}
       <svg className="cart-svg cart-back" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
@@ -415,13 +481,7 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
 
       {/* featured skin: compositable HTML layer between the back SVG (lid, rim, cavity) and the
           front SVG (side, front wall, rim teeth, clasps, plate), so the box overlaps its lower part */}
-      {skin && (
-        <span className="cart-skin-wrap" style={SKIN_STYLE}>
-          <span className="cart-skin-glow" />
-          <img className="cart-skin" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} />
-          <img className="cart-skin cart-skin-tint" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} aria-hidden />
-        </span>
-      )}
+      {skinLayer}
 
       <svg className="cart-svg cart-front" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
         {/* right side face */}
@@ -581,11 +641,7 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
           <Props theme={theme} h={h} />
         </g>
       </svg>
-      <span className={`cart-fx cart-fx-${fx}`} style={{ ['--fx' as string]: hsl(h, 100, 70) }} aria-hidden>
-        {Array.from({ length: 7 }, (_, i) => (
-          <i key={i} style={{ left: `${12 + ((i * 37 + variant * 11) % 76)}%`, animationDelay: `${(i * 0.53 + variant * 0.31) % 3}s` }} />
-        ))}
-      </span>
+      {fxLayer}
       </span>
     </span>
   );
@@ -632,7 +688,7 @@ function Details({ variant, h, url, rim, rimHi }: { variant: number; h: number; 
       return (
         <g className="cart-details" fill="none" strokeLinecap="round">
           <line x1={LID.tr[0] - 12} y1={LID.tr[1]} x2={LID.tr[0] - 4} y2={LID.tr[1] - 16} stroke="#1a1d24" strokeWidth="2.2" />
-          <circle className="cart-led" cx={LID.tr[0] - 4} cy={LID.tr[1] - 16} r="2.4" fill={rimHi} />
+          <circle className="cart-led" cx={LED.x} cy={LED.y} r="2.4" fill={rimHi} />
         </g>
       );
     case 3: // stickers on the lid frame
