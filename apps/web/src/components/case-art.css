@@ -58,13 +58,34 @@
   filter: none;
 }
 
-.cart > svg {
+/* Stage keeps the 240×184 art aspect inside any box size, so HTML layers (skin, fx)
+   line up with the SVG layers at every render size. */
+.cart-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(100cqw, calc(100cqh * 240 / 184));
+  aspect-ratio: 240 / 184;
+  translate: -50% -50%;
+}
+.cart-stage > svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   overflow: visible;
   display: block;
+}
+
+/* Perf: the cover is its own compositor layer, so card hover (bg/shadow transitions, lift,
+   scale) never repaints the SVG art; off-screen cards skip style/layout/paint and animations. */
+.case-card .case-art.cart,
+.case-hero .case-art.cart {
+  will-change: transform;
+}
+.cases-grid .case-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 330px;
 }
 
 /* Painted lid scene: graded toward the case hue. */
@@ -76,21 +97,15 @@
   opacity: 0.12;
 }
 
-/* Blurred, darkened copy of the lid scene as a depth glow behind the chest. */
+/* Depth glow behind the chest: a 48px thumbnail that is already blurred, darkened and
+   alpha-vignetted (tools/gen_case_art_blur.py) and simply upscaled — no runtime filter/mask. */
 .cart-bgimg {
   position: absolute;
-  left: 14%;
-  right: 2%;
-  top: -6%;
-  bottom: 34%;
-  width: 84%;
-  height: 72%;
-  object-fit: cover;
-  border-radius: 50%;
-  filter: blur(14px) brightness(0.6) saturate(1.4);
+  left: 8%;
+  top: -14%;
+  width: 92%;
+  height: 92%;
   opacity: 0.85;
-  -webkit-mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 45%, transparent 100%);
   pointer-events: none;
   z-index: -1;
 }
@@ -105,19 +120,45 @@
   }
 }
 
-/* Featured skin (SVG, inside the box): rises out of the box on card hover. */
-.cart-skin-g {
-  transform-box: view-box;
-  transform-origin: 112px 98px;
+/* Featured skin: own compositor layer between the back and front SVGs. Only transform and
+   opacity change on hover; tint/glow/shadow are rasterised once per layer. */
+.cart-skin-wrap {
+  position: absolute;
+  isolation: isolate;
+  transform: rotate(-15deg);
+  will-change: transform;
   transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
 }
+.cart-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* hue glow around the silhouette + soft shadow cast up-right onto the inner back wall */
+  filter: drop-shadow(0 0 2.5px hsl(var(--hue) 100% 62% / 0.85)) drop-shadow(4px -5px 3px rgba(0, 0, 0, 0.5));
+}
+/* ~45% tint toward the case hue that keeps the skin's own shading: a colourised copy of the
+   same image blended with mix-blend-mode: color inside the isolated (layered) wrap — rasterised
+   once with the layer, nothing per frame. */
+.cart-skin-tint {
+  filter: sepia(1) saturate(4) hue-rotate(calc((var(--hue) - 38) * 1deg));
+  mix-blend-mode: color;
+  opacity: 0.55;
+}
+/* Pre-blurred glow: plain radial gradient, opacity animated. */
 .cart-skin-glow {
+  position: absolute;
+  inset: 22% 4% 18%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, hsl(var(--hue) 100% 65% / 0.75), color-mix(in srgb, var(--rar) 25%, transparent) 55%, transparent);
   opacity: 0.55;
   transition: opacity 0.4s ease;
 }
-.case-card:hover .cart-skin-g,
-.case-pick:hover .cart-skin-g {
-  transform: translateY(-28px) rotate(4deg) scale(1.04);
+.case-card:hover .cart-skin-wrap,
+.case-pick:hover .cart-skin-wrap {
+  transform: translateY(-19%) rotate(-11deg) scale(1.04);
 }
 .case-card:hover .cart-skin-glow,
 .case-pick:hover .cart-skin-glow {
@@ -156,7 +197,7 @@
   .case-hero .cart-ring-dash {
     animation: none;
   }
-  .cart-skin-g,
+  .cart-skin-wrap,
   .cart-skin-glow {
     transition: none;
   }

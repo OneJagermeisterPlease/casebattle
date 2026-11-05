@@ -43,7 +43,7 @@ function PatternDefs({ id, pattern, hue }: { id: string; pattern: ItemDTO['patte
 
 export function ItemArt({ item, className = '' }: { item: ItemDTO; className?: string }) {
   if (item.imageUrl) {
-    return <img className={`item-art ${className}`} src={item.imageUrl} alt={`${item.weapon} | ${item.finish}`} loading="lazy" draggable={false} />;
+    return <img className={`item-art ${className}`} src={item.imageUrl} alt={`${item.weapon} | ${item.finish}`} loading="lazy" decoding="async" width={256} height={192} draggable={false} />;
   }
   const id = `i${item.id}`;
   return (

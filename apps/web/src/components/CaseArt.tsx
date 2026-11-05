@@ -1,6 +1,7 @@
 import { RARITY_META, type CaseDTO } from '@casebattle/shared';
 import { useId, type ReactNode } from 'react';
 import { CASE_ART } from '@/lib/caseArtManifest';
+import { CASE_ART_BLUR } from './caseArtBlur';
 import './case-art.css';
 
 /**
@@ -198,7 +199,14 @@ const WW = LID.tr[0] - 7 - WX;
 const WH = BK.y - 6 - WY;
 const CX = (F.x0 + F.x1) / 2; // front centre
 // Featured skin resting diagonally in the cavity; its lower part sinks behind the front wall.
-const SKIN = { cx: 112, cy: 98, w: 196, h: 147, rot: -15 };
+const SKIN = { cx: 112, cy: 98, w: 196, h: 147 };
+const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
+const SKIN_STYLE = {
+  left: pct(SKIN.cx - SKIN.w / 2, VB_W),
+  top: pct(SKIN.cy - SKIN.h / 2, VB_H),
+  width: pct(SKIN.w, VB_W),
+  height: pct(SKIN.h, VB_H),
+};
 // Carry handle on the side face: two mounts along D, bar hanging out of the face.
 const HANDLE_A: [number, number] = [F.x1 + 7, F.y0 + 22];
 const HANDLE_B: [number, number] = [F.x1 + DX - 7, F.y0 + 22 + (DY * (DX - 14)) / DX];
@@ -218,10 +226,12 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
   if (c.imageUrl) {
     return (
       <span className={`case-art cart cart-crate ${className}`} role="img" aria-label={c.name}>
-        <svg className="cart-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
-          <Backdrop h={h} id={id} url={url} />
-        </svg>
-        <img className="cart-crate-img" src={c.imageUrl} alt="" loading="lazy" draggable={false} />
+        <span className="cart-stage">
+          <svg className="cart-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
+            <Backdrop h={h} id={id} url={url} />
+          </svg>
+          <img className="cart-crate-img" src={c.imageUrl} alt="" width={256} height={192} loading="lazy" decoding="async" draggable={false} />
+        </span>
       </span>
     );
   }
@@ -231,6 +241,9 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
   const own = c.slug && CASE_ART.has(c.slug) ? `/cases/art/${c.slug}.webp` : null;
   const sk = sceneKey(c.icon, theme);
   const paint = own ?? (sk ? `/cases/scenes/${sk}.webp` : null);
+  // Backdrop glow: tiny pre-blurred, pre-darkened, alpha-vignetted thumbnail (no runtime filter).
+  const blur =
+    own && c.slug && CASE_ART_BLUR.has(c.slug) ? `/cases/art-blur/${c.slug}.webp` : sk && SCENE_FILES.has(sk) ? `/cases/scenes-blur/${sk}.webp` : null;
   const gold = GOLD_THEMES.has(theme) || c.icon === 'knife' || c.icon === 'glove' || c.icon === 'crown';
   const finish: Finish = FINISH[theme] ?? 'painted';
   const seed = hashStr(c.slug ?? c.name);
@@ -246,9 +259,15 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
   const latchXs = Array.from({ length: latches }, (_, i) => F.x0 + 18 + (i * (F.x1 - F.x0 - 36)) / (latches - 1));
 
   return (
-    <span className={`case-art cart cart-${theme} ${paint ? 'has-paint' : 'no-paint'} ${skin ? 'has-skin' : 'no-skin'} ${className}`} role="img" aria-label={c.name}>
-      {paint && <img className="cart-bgimg" src={paint} alt="" loading="lazy" draggable={false} />}
-      <svg className="cart-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
+    <span
+      className={`case-art cart cart-${theme} ${paint ? 'has-paint' : 'no-paint'} ${skin ? 'has-skin' : 'no-skin'} ${className}`}
+      role="img"
+      aria-label={c.name}
+      style={{ ['--hue' as string]: h, ['--rar' as string]: rarityColor }}
+    >
+      <span className="cart-stage">
+      {blur && <img className="cart-bgimg" src={blur} alt="" width={48} height={48} loading="lazy" decoding="async" draggable={false} />}
+      <svg className="cart-svg cart-back" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
         <defs>
           <linearGradient id={id('frame')} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor={hsl(h, 45, 60)} />
@@ -299,37 +318,6 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
           <clipPath id={id('win')}>
             <polygon points={WIN} />
           </clipPath>
-          <radialGradient id={id('skinglow')}>
-            <stop offset="0" stopColor={hsl(h, 100, 65)} stopOpacity=".75" />
-            <stop offset=".55" stopColor={rarityColor} stopOpacity=".25" />
-            <stop offset="1" stopColor={rarityColor} stopOpacity="0" />
-          </radialGradient>
-          <filter id={id('skinfx')} x="-25%" y="-35%" width="150%" height="170%" colorInterpolationFilters="sRGB">
-            {/* ~50% tint toward the case hue, keeping the skin's own shading */}
-            <feFlood floodColor={hsl(h, 100, 55)} result="hue" />
-            <feComposite in="hue" in2="SourceAlpha" operator="in" result="hueMask" />
-            <feBlend in="hueMask" in2="SourceGraphic" mode="color" result="colored" />
-            <feComposite in="colored" in2="SourceGraphic" operator="arithmetic" k1="0" k2=".42" k3=".58" k4="0" result="tinted" />
-            {/* hue glow around the silhouette */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="fat" />
-            <feGaussianBlur in="fat" stdDeviation="3.2" result="blur" />
-            <feFlood floodColor={hsl(h, 100, 62)} result="glowc" />
-            <feComposite in="glowc" in2="blur" operator="in" result="glowFull" />
-            <feComponentTransfer in="glowFull" result="glow">
-              <feFuncA type="linear" slope=".8" />
-            </feComponentTransfer>
-            {/* soft shadow cast onto the inner back wall (up and to the right) */}
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="sblur" />
-            <feOffset in="sblur" dx="5" dy="-6" result="soff" />
-            <feComponentTransfer in="soff" result="shadow">
-              <feFuncA type="linear" slope=".55" />
-            </feComponentTransfer>
-            <feMerge>
-              <feMergeNode in="shadow" />
-              <feMergeNode in="glow" />
-              <feMergeNode in="tinted" />
-            </feMerge>
-          </filter>
           <clipPath id={id('front')}>
             <polygon points={FRONT} />
           </clipPath>
@@ -423,25 +411,19 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
 
         {skin && <ellipse className="cart-rarity" cx={CX + 12} cy={F.y0 - 6} rx="96" ry="22" fill={url('rar')} />}
 
-        {/* featured skin: lies inside the open box (front wall, rim and clasps drawn over it),
-            tinted toward the case hue, hue glow + shadow on the inner back wall */}
-        {skin && (
-          <g className="cart-skin-g">
-            <ellipse className="cart-skin-glow" cx={SKIN.cx} cy={SKIN.cy - 4} rx={SKIN.w * 0.42} ry="20" fill={url('skinglow')} />
-            <image
-              className="cart-skin"
-              href={skin}
-              x={SKIN.cx - SKIN.w / 2}
-              y={SKIN.cy - SKIN.h / 2}
-              width={SKIN.w}
-              height={SKIN.h}
-              preserveAspectRatio="xMidYMid meet"
-              transform={`rotate(${SKIN.rot} ${SKIN.cx} ${SKIN.cy})`}
-              filter={url('skinfx')}
-            />
-          </g>
-        )}
+      </svg>
 
+      {/* featured skin: compositable HTML layer between the back SVG (lid, rim, cavity) and the
+          front SVG (side, front wall, rim teeth, clasps, plate), so the box overlaps its lower part */}
+      {skin && (
+        <span className="cart-skin-wrap" style={SKIN_STYLE}>
+          <span className="cart-skin-glow" />
+          <img className="cart-skin" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} />
+          <img className="cart-skin cart-skin-tint" src={skin} alt="" width={196} height={147} loading="lazy" decoding="async" draggable={false} aria-hidden />
+        </span>
+      )}
+
+      <svg className="cart-svg cart-front" viewBox={`0 0 ${VB_W} ${VB_H}`} aria-hidden="true">
         {/* right side face */}
         <polygon points={SIDE_R} fill={url('side')} />
         <g clipPath={url('sidec')}>
@@ -603,6 +585,7 @@ export function CaseArt({ c, className = '' }: { c: ArtCase; className?: string 
         {Array.from({ length: 7 }, (_, i) => (
           <i key={i} style={{ left: `${12 + ((i * 37 + variant * 11) % 76)}%`, animationDelay: `${(i * 0.53 + variant * 0.31) % 3}s` }} />
         ))}
+      </span>
       </span>
     </span>
   );

@@ -2,7 +2,7 @@
 
 import type { CaseItemDTO, ItemDTO } from '@casebattle/shared';
 import { RARITY_META } from '@casebattle/shared';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { shortName } from '@/lib/format';
 import { land, RARITY_LEVEL, tick } from '@/lib/sfx';
 import { Burst } from './Burst';
@@ -55,12 +55,9 @@ export function Roulette({
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
-  const blurWrapRef = useRef<HTMLDivElement>(null);
-  const blurRef = useRef<SVGFEGaussianBlurElement>(null);
   const markerRef = useRef<HTMLDivElement>(null);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
-  const filterId = `rb${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [landed, setLanded] = useState(false);
   const [spinning, setSpinning] = useState(false);
 
@@ -101,16 +98,11 @@ export function Roulette({
     const setPos = (p: number) => {
       track.style.transform = `${axis}(${-p}px)`;
     };
+    // Perf: motion blur is a CSS blur() on the already-composited track (GPU filter on the layer,
+    // no repaint), quantised to 0.5px steps and only written when the bucket changes. The old
+    // per-frame SVG url() filter on the clip forced a full CPU re-filter of the strip every frame.
     const setBlur = (b: number) => {
-      const wrap = blurWrapRef.current;
-      const fe = blurRef.current;
-      if (!wrap || !fe) return;
-      if (b < 0.4) {
-        wrap.style.filter = '';
-      } else {
-        fe.setAttribute('stdDeviation', vertical ? `0 ${b}` : `${b} 0`);
-        wrap.style.filter = `url(#${filterId})`;
-      }
+      track.style.filter = b < 0.4 ? '' : `blur(${(b * 0.45).toFixed(2)}px)`;
     };
 
     track.style.transition = 'none';
@@ -200,13 +192,8 @@ export function Roulette({
       className={`roulette${vertical ? ' vertical' : ''}${landed ? ' landed' : ''}${spinning ? ' spinning' : ''}`}
       style={{ ['--win' as string]: winColor }}
     >
-      <svg className="roulette-defs" aria-hidden width="0" height="0">
-        <filter id={filterId} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
-          <feGaussianBlur ref={blurRef} stdDeviation="0 0" />
-        </filter>
-      </svg>
       <div className="roulette-floor" />
-      <div ref={blurWrapRef} className="roulette-clip">
+      <div className="roulette-clip">
         <div ref={trackRef} className="roulette-track">
           {strip.map((it, i) => {
             const isWin = i === WIN_INDEX && landed;

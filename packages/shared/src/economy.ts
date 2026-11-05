@@ -32,6 +32,8 @@ export function contractTargetPrice(sum: number, roll: number): number {
   return Math.round(sum * (CONTRACT_MIN_MULT + (CONTRACT_MAX_MULT - CONTRACT_MIN_MULT) * roll ** 3));
 }
 
+/** 3900 → «39», 134 → «1,34», 150000 → «1 500». Копейки показываем, только если они есть. */
 export function formatCoins(cents: number): string {
-  return (cents / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const whole = Math.round(cents) % 100 === 0;
+  return (cents / 100).toLocaleString('ru-RU', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
