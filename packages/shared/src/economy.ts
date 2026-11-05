@@ -9,15 +9,49 @@ export const CONTRACT_MIN_MULT = 0.25;
 export const CONTRACT_MAX_MULT = 3;
 export const CASE_MAX_OPEN = 5;
 
-export function upgradeChance(stake: number, targetPrice: number): number {
+export interface UpgradeRules {
+  /** Комиссия «дома», 0..0.5 */
+  edge: number;
+  /** Максимальный шанс, 0..0.95 */
+  max: number;
+}
+
+export const DEFAULT_UPGRADE_RULES: UpgradeRules = { edge: HOUSE_EDGE, max: UPGRADE_MAX_CHANCE };
+
+export function upgradeChance(stake: number, targetPrice: number, rules: UpgradeRules = DEFAULT_UPGRADE_RULES): number {
   if (stake <= 0 || targetPrice <= 0) return 0;
-  const raw = (stake / targetPrice) * (1 - HOUSE_EDGE);
-  return Math.min(UPGRADE_MAX_CHANCE, Math.max(UPGRADE_MIN_CHANCE, raw));
+  const raw = (stake / targetPrice) * (1 - rules.edge);
+  return Math.min(rules.max, Math.max(UPGRADE_MIN_CHANCE, raw));
 }
 
 /** Цена цели, при которой шанс апгрейда равен `chance`. */
-export function upgradeTargetForChance(stake: number, chance: number): number {
-  return Math.round((stake * (1 - HOUSE_EDGE)) / chance);
+export function upgradeTargetForChance(stake: number, chance: number, rules: UpgradeRules = DEFAULT_UPGRADE_RULES): number {
+  return Math.round((stake * (1 - rules.edge)) / chance);
+}
+
+/** Публичные настройки игры (GET /config). */
+export interface GameConfig {
+  startingBalance: number;
+  dailyBonus: number;
+  upgradeEdge: number;
+  upgradeMaxChance: number;
+}
+
+/**
+ * «Удача» от -100 до 100 наклоняет веса предметов: w' = w · (цена / цена кейса)^(удача / 50).
+ * +100 — дорогие предметы выпадают заметно чаще, -100 — почти всегда дешёвые.
+ */
+export function tiltWeights<T extends { weight: number; price: number }>(entries: T[], casePrice: number, luck: number): T[] {
+  if (!luck) return entries;
+  const k = luck / 50;
+  return entries.map((e) => ({ ...e, weight: e.weight * Math.pow(Math.max(1, e.price) / Math.max(1, casePrice), k) }));
+}
+
+/** Удача для броска 0..1 (контракты): +100 сдвигает бросок вверх, -100 — вниз. */
+export function luckRoll(roll: number, luck: number): number {
+  if (!luck) return roll;
+  const m = Math.pow(2, luck / 50);
+  return Math.pow(roll, 1 / m);
 }
 
 export function contractRange(sum: number): { min: number; max: number } {

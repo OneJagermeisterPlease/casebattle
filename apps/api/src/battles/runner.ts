@@ -1,4 +1,5 @@
-import { battleTeam, pickByWeight, rollFloat, type BattleMode } from '@casebattle/shared';
+import { battleTeam, pickByWeight, rollFloat, tiltWeights, type BattleMode } from '@casebattle/shared';
+import { caseLuck } from '../luck';
 import type { BattleDTO } from '@casebattle/shared';
 import { prisma } from '../db';
 import { env } from '../env';
@@ -60,10 +61,12 @@ async function run(id: string) {
 
   for (let round = battle.currentRound; round < caseIds.length; round++) {
     const c = caseById.get(caseIds[round]!)!;
+    const base = c.items.map((ci) => ({ ...ci, price: ci.item.price }));
     const drops = await Promise.all(
       battle.players.map(async (p) => {
         const roll = await rollFloat(battle.serverSeed, battle.id, round, p.slot);
-        return { slot: p.slot, item: pickByWeight(c.items, roll).item };
+        const entries = tiltWeights(base, c.price, await caseLuck(prisma, p.userId, c.id));
+        return { slot: p.slot, item: pickByWeight(entries, roll).item };
       }),
     );
     await prisma.$transaction([

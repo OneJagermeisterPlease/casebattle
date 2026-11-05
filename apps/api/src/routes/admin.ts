@@ -5,6 +5,7 @@ import { requireAdmin } from '../auth';
 import { prisma } from '../db';
 import { httpError } from '../errors';
 import { caseDTO, inventoryDTO, itemDTO, publicUser } from '../serialize';
+import { getSettings, saveSettings } from '../settings';
 import { credit } from '../wallet';
 
 const itemInput = z.object({
@@ -231,6 +232,50 @@ export async function adminRoutes(app: FastifyInstance) {
     }
     for (const c of body.cases) await saveCase(`case-${c.slug}`, c);
     return { items: body.items.length, cases: body.cases.length };
+  });
+
+  app.get('/admin/settings', async () => getSettings());
+
+  app.put('/admin/settings', async (req) => {
+    const patch = z
+      .object({
+        startingBalance: z.number().int().min(0).optional(),
+        dailyBonus: z.number().int().min(0).optional(),
+        upgradeEdge: z.number().min(0).max(0.5).optional(),
+        upgradeMaxChance: z.number().min(0.05).max(0.95).optional(),
+      })
+      .parse(req.body);
+    return saveSettings(patch);
+  });
+
+  app.get('/admin/users/:id/luck', async (req) => {
+    const { id } = req.params as { id: string };
+    const rows = await prisma.userLuck.findMany({ where: { userId: id }, orderBy: { createdAt: 'asc' } });
+    const cases = await prisma.case.findMany({ where: { id: { in: rows.map((r) => r.caseId!).filter(Boolean) } } });
+    const names = new Map(cases.map((c) => [c.id, c.name]));
+    return rows.map((r) => ({ ...r, caseName: r.caseId ? (names.get(r.caseId) ?? '—') : null }));
+  });
+
+  /** Создать/изменить/удалить (value: null) индивидуальную удачу игрока. */
+  app.put('/admin/users/:id/luck', async (req) => {
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        kind: z.enum(['case', 'upgrade', 'contract']),
+        caseId: z.string().nullable().default(null),
+        value: z.number().nullable(),
+      })
+      .parse(req.body);
+    if (body.value !== null) {
+      if (body.kind === 'upgrade' && (body.value < 0.05 || body.value > 10)) throw httpError(400, 'Множитель апгрейда: от 0.05 до 10');
+      if (body.kind !== 'upgrade' && (body.value < -100 || body.value > 100)) throw httpError(400, 'Удача: от -100 до 100');
+    }
+    const caseId = body.kind === 'case' ? body.caseId : null;
+    await prisma.$transaction(async (tx) => {
+      await tx.userLuck.deleteMany({ where: { userId: id, kind: body.kind, caseId } });
+      if (body.value !== null) await tx.userLuck.create({ data: { userId: id, kind: body.kind, caseId, value: body.value } });
+    });
+    return { ok: true };
   });
 
   app.get('/admin/promos', async () => prisma.promoCode.findMany({ orderBy: { code: 'asc' } }));

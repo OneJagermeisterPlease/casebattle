@@ -244,3 +244,27 @@ describe('admin management', () => {
     expect(promos.some((p: { code: string }) => p.code === 'FRIENDS')).toBe(true);
   });
 });
+
+describe('admin luck and settings', () => {
+  it('applies a per-user upgrade multiplier and global settings', async () => {
+    const admin = (await call('POST', '/auth/login', undefined, { nickname: 'testadmin', password: 'testadmin-pass' })).body.token;
+    const lucky = await register('lucky');
+    const me = (await call('GET', '/me', lucky)).body;
+    const item = (await call('GET', '/items?minPrice=50000&limit=1')).body.items[0];
+
+    const base = await call('POST', '/upgrade', lucky, { balance: 1000, targetItemId: item.id });
+    expect((await call('PUT', `/admin/users/${me.id}/luck`, admin, { kind: 'upgrade', value: 10 })).status).toBe(200);
+    const boosted = await call('POST', '/upgrade', lucky, { balance: 1000, targetItemId: item.id });
+    expect(boosted.body.chance).toBeCloseTo(Math.min(0.95, base.body.chance * 10), 5);
+
+    const luck = (await call('GET', `/admin/users/${me.id}/luck`, admin)).body;
+    expect(luck).toHaveLength(1);
+    await call('PUT', `/admin/users/${me.id}/luck`, admin, { kind: 'upgrade', value: null });
+    expect((await call('GET', `/admin/users/${me.id}/luck`, admin)).body).toHaveLength(0);
+
+    await call('PUT', '/admin/settings', admin, { startingBalance: 40000 });
+    expect((await call('GET', '/config')).body.startingBalance).toBe(40000);
+    const fresh = await register('fresh400');
+    expect((await call('GET', '/me', fresh)).body.balance).toBe(40000);
+  });
+});

@@ -1,7 +1,7 @@
 'use client';
 
 import type { InventoryItemDTO, ItemDTO } from '@casebattle/shared';
-import { UPGRADE_MAX_ITEMS, upgradeChance, upgradeTargetForChance } from '@casebattle/shared';
+import { DEFAULT_UPGRADE_RULES, UPGRADE_MAX_ITEMS, upgradeChance, upgradeTargetForChance, type GameConfig, type UpgradeRules } from '@casebattle/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Burst } from '@/components/Burst';
 import { Price } from '@/components/Coin';
@@ -43,6 +43,12 @@ export default function UpgradePage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [extra, setExtra] = useState('');
   const [target, setTarget] = useState<ItemDTO | null>(null);
+  const [rules, setRules] = useState<UpgradeRules>(DEFAULT_UPGRADE_RULES);
+  useEffect(() => {
+    api<GameConfig>('/config')
+      .then((c) => setRules({ edge: c.upgradeEdge, max: c.upgradeMaxChance }))
+      .catch(() => undefined);
+  }, []);
   const [catalog, setCatalog] = useState<ItemDTO[]>([]);
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [search, setSearch] = useState('');
@@ -107,7 +113,7 @@ export default function UpgradePage() {
   const extraCents = Math.max(0, Math.round((Number(extra.replace(',', '.')) || 0) * 100));
   const selItems = useMemo(() => inventory.filter((i) => selected.includes(i.id)), [inventory, selected]);
   const stake = selItems.reduce((s, i) => s + i.price, 0) + extraCents;
-  const chance = target && stake > 0 && target.price > stake ? upgradeChance(stake, target.price) : 0;
+  const chance = target && stake > 0 && target.price > stake ? upgradeChance(stake, target.price, rules) : 0;
 
   // Каталог желаемых: только дороже ставки.
   const floor = Math.max(stake + 1, minPrice ?? 0);
@@ -155,7 +161,7 @@ export default function UpgradePage() {
   /** Кнопки x2/x5/x10 и 30/50/75%: подбираем ближайший предмет к нужной цене. */
   async function quick(kind: 'mult' | 'chance', v: number) {
     if (stake <= 0) return toast('Сначала выберите предметы или добавьте баланс', 'info');
-    const wanted = kind === 'mult' ? stake * v : upgradeTargetForChance(stake, v);
+    const wanted = kind === 'mult' ? stake * v : upgradeTargetForChance(stake, v, rules);
     setMinPrice(Math.round(wanted * 0.9));
     try {
       const r = await api<{ items: ItemDTO[] }>(`/items?minPrice=${Math.max(stake + 1, wanted)}&sort=asc&limit=1`);
@@ -426,7 +432,7 @@ export default function UpgradePage() {
                   item={it}
                   compact
                   selected={target?.id === it.id}
-                  top={stake > 0 ? <span className="chance-badge">{(upgradeChance(stake, it.price) * 100).toFixed(1)}%</span> : undefined}
+                  top={stake > 0 ? <span className="chance-badge">{(upgradeChance(stake, it.price, rules) * 100).toFixed(1)}%</span> : undefined}
                   onClick={() => {
                     if (spinning) return;
                     setTarget(it);

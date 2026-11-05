@@ -5,7 +5,9 @@ import {
   UPGRADE_MAX_ITEMS,
   contractRange,
   contractTargetPrice,
+  luckRoll,
   pickByWeight,
+  tiltWeights,
   upgradeChance,
 } from '@casebattle/shared';
 import type { FastifyInstance } from 'fastify';
@@ -14,7 +16,9 @@ import { requireUser } from '../auth';
 import { prisma, type Tx } from '../db';
 import { httpError } from '../errors';
 import { takeRolls } from '../fairness';
+import { caseLuck, contractLuck, upgradeMultiplier } from '../luck';
 import { emitDrops } from '../realtime';
+import { getSettings, upgradeRules } from '../settings';
 import { inventoryDTO } from '../serialize';
 import { credit, debit } from '../wallet';
 
@@ -52,9 +56,11 @@ export async function playRoutes(app: FastifyInstance) {
       }
       await debit(tx, user.id, c.price * count, `case:${c.slug}`);
       const { rolls, nonce } = await takeRolls(tx, user.id, count);
+      const luck = await caseLuck(tx, user.id, c.id);
+      const entries = tiltWeights(c.items.map((ci) => ({ ...ci, price: ci.item.price })), c.price, luck);
       const created = [];
       for (const roll of rolls) {
-        const { item } = pickByWeight(c.items, roll);
+        const { item } = pickByWeight(entries, roll);
         created.push(
           await tx.inventoryItem.create({
             data: { userId: user.id, itemId: item.id, price: item.price, source: 'case', caseId: c.id },
@@ -118,7 +124,9 @@ export async function playRoutes(app: FastifyInstance) {
       if (stake <= 0) throw httpError(400, 'Выберите предметы или добавьте баланс');
       if (target.price <= stake) throw httpError(400, 'Желаемый предмет должен быть дороже ставки');
       await debit(tx, user.id, body.balance, 'upgrade');
-      const chance = upgradeChance(stake, target.price);
+      const rules = upgradeRules(await getSettings());
+      const mult = await upgradeMultiplier(tx, user.id);
+      const chance = Math.min(0.95, upgradeChance(stake, target.price, rules) * mult);
       const { rolls, nonce } = await takeRolls(tx, user.id, 1);
       const roll = rolls[0]!;
       const win = roll < chance;
@@ -144,7 +152,7 @@ export async function playRoutes(app: FastifyInstance) {
       const sum = rows.reduce((s, r) => s + r.price, 0);
       const { min, max } = contractRange(sum);
       const { rolls, nonce } = await takeRolls(tx, user.id, 1);
-      const targetPrice = contractTargetPrice(sum, rolls[0]!);
+      const targetPrice = contractTargetPrice(sum, luckRoll(rolls[0]!, await contractLuck(tx, user.id)));
       const [above, below] = await Promise.all([
         tx.item.findFirst({ where: { price: { gte: targetPrice, lte: max } }, orderBy: { price: 'asc' } }),
         tx.item.findFirst({ where: { price: { lte: targetPrice, gte: min } }, orderBy: { price: 'desc' } }),

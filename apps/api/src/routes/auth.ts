@@ -8,6 +8,7 @@ import { env } from '../env';
 import { httpError } from '../errors';
 import { newClientSeed, newServerSeed } from '../fairness';
 import { DAY_MS, meDTO } from '../serialize';
+import { getSettings } from '../settings';
 import { credit } from '../wallet';
 
 const credentials = z.object({
@@ -27,13 +28,14 @@ export async function createUser(
 ) {
   if (await prisma.user.findUnique({ where: { nickname } })) throw httpError(409, 'Такой ник уже занят');
   const seeds = await newServerSeed();
+  const { startingBalance } = await getSettings();
   // '!' — не bcrypt-хеш, так что вход по паролю для таких аккаунтов невозможен.
   const passwordHash = password ? await bcrypt.hash(password, 10) : '!';
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: { nickname, passwordHash, clientSeed: newClientSeed(), ...seeds, ...extra },
     });
-    await credit(tx, user.id, env.startingBalance, 'signup_bonus');
+    await credit(tx, user.id, startingBalance, 'signup_bonus');
     return tx.user.findUniqueOrThrow({ where: { id: user.id } });
   });
 }
@@ -65,6 +67,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/me/daily', async (req) => {
     const user = await requireUser(req);
     const now = Date.now();
+    const { dailyBonus } = await getSettings();
     const user2 = await prisma.$transaction(async (tx) => {
       // Условие в where защищает от двойного получения бонуса параллельными запросами.
       const res = await tx.user.updateMany({
@@ -72,7 +75,7 @@ export async function authRoutes(app: FastifyInstance) {
         data: { lastDailyAt: new Date(now) },
       });
       if (res.count === 0) throw httpError(400, 'Бонус уже получен, приходите позже');
-      await credit(tx, user.id, env.dailyBonus, 'daily_bonus');
+      await credit(tx, user.id, dailyBonus, 'daily_bonus');
       return tx.user.findUniqueOrThrow({ where: { id: user.id } });
     });
     return meDTO(user2);

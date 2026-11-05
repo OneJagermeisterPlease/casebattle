@@ -32,6 +32,28 @@ model User {
   inventory          InventoryItem[]
   battleSlots        BattlePlayer[]
   promoUses          PromoUse[]
+  luck               UserLuck[]
+}
+
+/// Индивидуальная «удача» игрока, задаётся в админке.
+/// kind: case (caseId = конкретный кейс или null = все кейсы), upgrade, contract.
+/// value: для case и contract — удача от -100 до 100; для upgrade — множитель шанса (0.1–5).
+model UserLuck {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  caseId    String?
+  value     Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, kind])
+}
+
+/// Глобальные настройки игры (ключ → JSON-значение), правятся в админке.
+model Setting {
+  key   String @id
+  value String
 }
 
 model Transaction {

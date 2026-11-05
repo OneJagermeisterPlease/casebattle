@@ -4,8 +4,11 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { httpError } from '../errors';
 import { caseDTO, itemDTO } from '../serialize';
+import { getSettings } from '../settings';
 
 export async function catalogRoutes(app: FastifyInstance) {
+  app.get('/config', async () => getSettings());
+
   app.get('/cases', async () => {
     const cases = await prisma.case.findMany({
       where: { isActive: true },

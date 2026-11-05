@@ -24,3 +24,19 @@ describe('contract', () => {
     }
   });
 });
+
+describe('luck', () => {
+  it('tilts weights toward expensive items for positive luck', async () => {
+    const { tiltWeights, luckRoll } = await import('./economy');
+    const entries = [
+      { weight: 90, price: 100 },
+      { weight: 10, price: 10000 },
+    ];
+    const share = (e: { weight: number }[]) => e[1]!.weight / (e[0]!.weight + e[1]!.weight);
+    expect(share(tiltWeights(entries, 1000, 100))).toBeGreaterThan(share(entries));
+    expect(share(tiltWeights(entries, 1000, -100))).toBeLessThan(share(entries));
+    expect(tiltWeights(entries, 1000, 0)).toBe(entries);
+    expect(luckRoll(0.25, 100)).toBeGreaterThan(0.25);
+    expect(luckRoll(0.25, -100)).toBeLessThan(0.25);
+  });
+});

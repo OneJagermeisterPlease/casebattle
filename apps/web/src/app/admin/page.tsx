@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth';
 import { formatCoins, pct } from '@/lib/format';
 import { errText, useToast } from '@/lib/toast';
 
-type Tab = 'stats' | 'users' | 'cases' | 'items' | 'promos' | 'import';
+type Tab = 'stats' | 'users' | 'cases' | 'items' | 'promos' | 'settings' | 'import';
 
 const TABS: [Tab, string][] = [
   ['stats', 'Обзор'],
@@ -24,6 +24,7 @@ const TABS: [Tab, string][] = [
   ['cases', 'Кейсы'],
   ['items', 'Предметы'],
   ['promos', 'Промокоды'],
+  ['settings', 'Настройки игры'],
   ['import', 'Импорт'],
 ];
 
@@ -51,6 +52,7 @@ export default function AdminPage() {
       {tab === 'cases' && <Cases />}
       {tab === 'items' && <Items />}
       {tab === 'promos' && <Promos />}
+      {tab === 'settings' && <Settings />}
       {tab === 'import' && <Import />}
     </div>
   );
@@ -207,7 +209,7 @@ function UserDetails({ id, onClose, onChanged }: { id: string; onClose: () => vo
   const toast = useToast();
   const [d, setD] = useState<UserDetailsDTO | null>(null);
   const [amount, setAmount] = useState('');
-  const [tab, setTab] = useState<'tx' | 'inv'>('tx');
+  const [tab, setTab] = useState<'luck' | 'tx' | 'inv'>('luck');
   const load = useCallback(() => {
     api<UserDetailsDTO>(`/admin/users/${id}`).then(setD).catch((e) => toast(errText(e), 'err'));
   }, [id, toast]);
@@ -270,6 +272,9 @@ function UserDetails({ id, onClose, onChanged }: { id: string; onClose: () => vo
             </button>
           </div>
           <div className="tabs" style={{ marginTop: 14 }}>
+            <button className={tab === 'luck' ? 'active' : ''} onClick={() => setTab('luck')}>
+              Удача и шансы
+            </button>
             <button className={tab === 'tx' ? 'active' : ''} onClick={() => setTab('tx')}>
               Транзакции · {d.transactions.length}
             </button>
@@ -277,6 +282,7 @@ function UserDetails({ id, onClose, onChanged }: { id: string; onClose: () => vo
               Предметы · {d.inventory.length}
             </button>
           </div>
+          {tab === 'luck' && <LuckEditor userId={id} />}
           {tab === 'tx' && (
             <table className="table">
               <tbody>
@@ -303,6 +309,171 @@ function UserDetails({ id, onClose, onChanged }: { id: string; onClose: () => vo
         </>
       )}
     </Modal>
+  );
+}
+
+/* ---------------- Удача игрока ---------------- */
+interface LuckRow {
+  id: string;
+  kind: 'case' | 'upgrade' | 'contract';
+  caseId: string | null;
+  caseName: string | null;
+  value: number;
+}
+
+const LUCK_LABEL = (v: number) =>
+  v >= 80 ? 'очень везёт' : v >= 30 ? 'везёт' : v > -30 ? 'обычно' : v > -80 ? 'не везёт' : 'совсем не везёт';
+
+function LuckEditor({ userId }: { userId: string }) {
+  const toast = useToast();
+  const [rows, setRows] = useState<LuckRow[]>([]);
+  const [cases, setCases] = useState<{ id: string; name: string; category: string }[]>([]);
+  const [kind, setKind] = useState<LuckRow['kind']>('case');
+  const [caseId, setCaseId] = useState<string>('');
+  const [value, setValue] = useState(50);
+  const [mult, setMult] = useState(2);
+
+  const load = useCallback(() => {
+    api<LuckRow[]>(`/admin/users/${userId}/luck`).then(setRows).catch(() => undefined);
+  }, [userId]);
+  useEffect(load, [load]);
+  useEffect(() => {
+    api<{ id: string; name: string; category: string }[]>('/cases').then(setCases).catch(() => undefined);
+  }, []);
+
+  async function save(body: { kind: LuckRow['kind']; caseId: string | null; value: number | null }) {
+    try {
+      await api(`/admin/users/${userId}/luck`, { method: 'PUT', body });
+      toast(body.value === null ? 'Настройка удалена' : 'Сохранено', 'ok');
+      load();
+    } catch (e) {
+      toast(errText(e), 'err');
+    }
+  }
+
+  return (
+    <div className="form">
+      <p className="muted small" style={{ margin: 0 }}>
+        Удача от −100 до +100 сдвигает шансы предметов: плюс — чаще дорогие, минус — чаще дешёвые. Настройка для конкретного кейса
+        важнее, чем «все кейсы», и действует и в батлах. Множитель апгрейда умножает шанс (максимум 95%).
+      </p>
+      <table className="table">
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td className="muted">Обычные шансы — индивидуальных настроек нет</td>
+            </tr>
+          )}
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{r.kind === 'case' ? `Кейс: ${r.caseName ?? 'все кейсы'}` : r.kind === 'upgrade' ? 'Апгрейд' : 'Контракты'}</td>
+              <td>{r.kind === 'upgrade' ? `×${r.value}` : `${r.value > 0 ? '+' : ''}${r.value} (${LUCK_LABEL(r.value)})`}</td>
+              <td style={{ textAlign: 'right' }}>
+                <button className="btn btn-sm btn-red" onClick={() => save({ kind: r.kind, caseId: r.caseId, value: null })}>
+                  Сбросить
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="row">
+        <select className="select" style={{ width: 'auto' }} value={kind} onChange={(e) => setKind(e.target.value as LuckRow['kind'])}>
+          <option value="case">Кейсы</option>
+          <option value="upgrade">Апгрейд</option>
+          <option value="contract">Контракты</option>
+        </select>
+        {kind === 'case' && (
+          <select className="select" style={{ width: 'auto', maxWidth: 280 }} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+            <option value="">Все кейсы</option>
+            {cases.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.category} · {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {kind === 'upgrade' ? (
+          <label className="row small">
+            Множитель шанса ×
+            <input className="input" style={{ width: 90 }} type="number" step="0.1" min="0.05" max="10" value={mult} onChange={(e) => setMult(Number(e.target.value))} />
+          </label>
+        ) : (
+          <label className="row small" style={{ flex: 1, minWidth: 220 }}>
+            <input type="range" min={-100} max={100} step={5} value={value} onChange={(e) => setValue(Number(e.target.value))} style={{ flex: 1 }} />
+            <b style={{ width: 150 }}>
+              {value > 0 ? '+' : ''}
+              {value} · {LUCK_LABEL(value)}
+            </b>
+          </label>
+        )}
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => save({ kind, caseId: kind === 'case' ? caseId || null : null, value: kind === 'upgrade' ? mult : value })}
+        >
+          Применить
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Настройки игры ---------------- */
+function Settings() {
+  const toast = useToast();
+  const [f, setF] = useState<{ startingBalance: string; dailyBonus: string; upgradeEdge: string; upgradeMaxChance: string } | null>(null);
+  useEffect(() => {
+    api<{ startingBalance: number; dailyBonus: number; upgradeEdge: number; upgradeMaxChance: number }>('/admin/settings')
+      .then((s) =>
+        setF({
+          startingBalance: String(s.startingBalance / 100),
+          dailyBonus: String(s.dailyBonus / 100),
+          upgradeEdge: String(Math.round(s.upgradeEdge * 1000) / 10),
+          upgradeMaxChance: String(Math.round(s.upgradeMaxChance * 1000) / 10),
+        }),
+      )
+      .catch(() => undefined);
+  }, []);
+  if (!f) return <div className="loader">Загрузка…</div>;
+
+  async function save() {
+    try {
+      await api('/admin/settings', {
+        method: 'PUT',
+        body: {
+          startingBalance: toCents(f!.startingBalance),
+          dailyBonus: toCents(f!.dailyBonus),
+          upgradeEdge: Number(f!.upgradeEdge) / 100,
+          upgradeMaxChance: Number(f!.upgradeMaxChance) / 100,
+        },
+      });
+      toast('Настройки сохранены', 'ok');
+    } catch (e) {
+      toast(errText(e), 'err');
+    }
+  }
+
+  const field = (label: string, key: keyof NonNullable<typeof f>, hint: string) => (
+    <label className="field">
+      {label}
+      <input className="input" value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
+      <span className="muted small">{hint}</span>
+    </label>
+  );
+
+  return (
+    <div className="panel form" style={{ maxWidth: 560 }}>
+      {field('Стартовый баланс, монет', 'startingBalance', 'Начисляется новым игрокам при регистрации')}
+      {field('Ежедневный бонус, монет', 'dailyBonus', 'Раз в 24 часа')}
+      {field('Комиссия апгрейда, %', 'upgradeEdge', 'Шанс = ставка / цена цели × (1 − комиссия). Обычно 5%')}
+      {field('Максимальный шанс апгрейда, %', 'upgradeMaxChance', 'Выше этого шанс не поднимется (кроме игроков с личным множителем)')}
+      <button className="btn btn-primary" onClick={save}>
+        Сохранить
+      </button>
+      <p className="muted small" style={{ margin: 0 }}>
+        Шансы и цены конкретных кейсов меняются во вкладке «Кейсы», цены предметов — во вкладке «Предметы».
+      </p>
+    </div>
   );
 }
 
